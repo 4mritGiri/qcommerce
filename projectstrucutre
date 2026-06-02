@@ -1,0 +1,66 @@
+Project root
+qcommerce/
+├── config/
+│ ├── config.exsbase config
+│ ├── dev.exs
+│ ├── prod.exs
+│ └── runtime.exssecrets / env vars
+├── priv/repo/migrations/
+ Business logic — lib/qcommerce/
+├── lib/qcommerce/
+│ ├── accounts/identity domain
+│ │ ├── accounts.expublic context API
+│ │ ├── user.ex
+│ │ └── address.ex
+│ ├── catalog/product domain
+│ │ ├── catalog.ex
+│ │ ├── category.ex
+│ │ └── product.ex
+│ ├── inventory/stock domain
+│ │ ├── inventory.ex
+│ │ └── branch_inventory.ex
+│ ├── orders/order domain
+│ │ ├── orders.ex
+│ │ ├── order.ex
+│ │ ├── order_item.ex
+│ │ └── pipeline/order state machine
+│ │ ├── place.ex
+│ │ ├── confirm.ex
+│ │ └── deliver.ex
+│ ├── delivery/rider domain
+│ │ ├── delivery.ex
+│ │ └── rider.ex
+│ ├── ledger/financial domain
+│ │ ├── ledger.ex
+│ │ ├── account.ex
+│ │ ├── journal.ex
+│ │ ├── journal_line.ex
+│ │ ├── balance_checkpoint.ex
+│ │ └── workers/
+│ │ └── checkpoint_balances_worker.ex
+│ ├── platform/config domain
+│ │ ├── platform.ex
+│ │ ├── branch.ex
+│ │ └── fiscal_year.ex
+Shared — lib/qcommerce/core/
+│ └── core/shared across all contexts
+│ ├── query.exreusable Ecto query helpers
+│ ├── schema.exbase schema macro (DRY)
+│ ├── error.extyped error structs
+│ └── outbox.exoutbox event writer
+Web layer — lib/qcommerce_web/
+├── lib/qcommerce_web/
+│ ├── controllers/
+│ │ ├── api/v1/REST — customer app
+│ │ │ ├── order_controller.ex
+│ │ │ ├── product_controller.ex
+│ │ │ └── auth_controller.ex
+│ │ └── admin/Super Admin panel
+│ ├── channels/hot path / real-time
+│ │ ├── rider_channel.ex
+│ │ └── order_channel.ex
+│ ├── plugs/
+│ │ ├── auth_plug.ex
+│ │ └── rate_limit_plug.ex
+│ ├── router.ex
+│ └── endpoint.ex
