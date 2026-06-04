@@ -9,7 +9,8 @@ defmodule Qcommerce.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      listeners: [Phoenix.CodeReloader]
     ]
   end
 
@@ -32,7 +33,10 @@ defmodule Qcommerce.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.7.20"},
+      # -----------------------------------------------------------------------
+      # Phoenix core — untouched from generated output
+      # -----------------------------------------------------------------------
+      {:phoenix, "~> 1.8.7"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
@@ -41,8 +45,8 @@ defmodule Qcommerce.MixProject do
       {:phoenix_live_view, "~> 1.0.0"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
-      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
+      {:esbuild, "~> 0.9", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.4", runtime: Mix.env() == :dev},
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.1.1",
@@ -57,7 +61,54 @@ defmodule Qcommerce.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+
+      # -----------------------------------------------------------------------
+      # PostGIS — GEOGRAPHY column support (rider/branch/address locations)
+      # -----------------------------------------------------------------------
+      {:geo_postgis, "~> 3.5"},
+
+      # -----------------------------------------------------------------------
+      # Auth — JWT tokens + password hashing
+      # -----------------------------------------------------------------------
+      {:guardian, "~> 2.3"},
+      {:bcrypt_elixir, "~> 3.0"},
+
+      # -----------------------------------------------------------------------
+      # Background jobs — Oban (PostgreSQL-backed, handles outbox processing,
+      # balance checkpointing, partition provisioning, scheduled reports)
+      # -----------------------------------------------------------------------
+      {:oban, "~> 2.17"},
+
+      # -----------------------------------------------------------------------
+      # UUID — UUIDv5 deterministic idempotency keys
+      # -----------------------------------------------------------------------
+      {:uuid, "~> 1.1"},
+
+      # -----------------------------------------------------------------------
+      # Rate limiting — Hammer 7.x
+      #
+      # v7 changed the API completely from v6:
+      #   - No global config :hammer backend needed in config.exs
+      #   - Each rate limiter is its own module: `use Hammer, backend: :ets`
+      #   - No poolboy dependency, no ETS pool config
+      #   - Cleaner, per-context rate limiters (API limiter, auth limiter, etc.)
+      # -----------------------------------------------------------------------
+      {:hammer, "~> 7.0"},
+
+      # -----------------------------------------------------------------------
+      # CORS — for the React Native mobile client
+      # -----------------------------------------------------------------------
+      {:cors_plug, "~> 3.0"},
+
+      # -----------------------------------------------------------------------
+      # Dev / Test
+      # -----------------------------------------------------------------------
+      {:ex_machina, "~> 2.7", only: :test},
+      {:faker, "~> 0.17", only: :test},
+      {:mox, "~> 1.1", only: :test},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

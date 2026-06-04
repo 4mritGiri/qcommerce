@@ -44,10 +44,10 @@ qcommerce/
 │ │ └── fiscal_year.ex
 Shared — lib/qcommerce/core/
 │ └── core/shared across all contexts
-│ ├── query.exreusable Ecto query helpers
-│ ├── schema.exbase schema macro (DRY)
-│ ├── error.extyped error structs
-│ └── outbox.exoutbox event writer
+│ ├── query.ex reusable Ecto query helpers
+│ ├── schema.ex base schema macro (DRY)
+│ ├── error.ex typed error structs
+│ └── outbox.ex outbox event writer
 Web layer — lib/qcommerce_web/
 ├── lib/qcommerce_web/
 │ ├── controllers/

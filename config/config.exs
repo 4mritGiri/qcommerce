@@ -1,17 +1,60 @@
-# This file is responsible for configuring your application
-# and its dependencies with the aid of the Config module.
-#
-# This configuration file is loaded before any dependency and
-# is restricted to this project.
-
-# General application configuration
 import Config
 
-config :qcommerce,
-  ecto_repos: [Qcommerce.Repo],
-  generators: [timestamp_type: :utc_datetime, binary_id: true]
+# =============================================================================
+# Ecto repos — REQUIRED or mix ecto.* commands cannot find the database
+# =============================================================================
+config :qcommerce, ecto_repos: [Qcommerce.Repo]
 
-# Configures the endpoint
+# =============================================================================
+# Ecto / PostgreSQL — base repo config applied in ALL environments
+# types: must be set here (not dev.exs) so test and prod also get PostGIS types
+# =============================================================================
+config :qcommerce, Qcommerce.Repo,
+  migration_primary_key: [name: :id, type: :binary_id],
+  migration_foreign_key: [type: :binary_id],
+  types: Qcommerce.PostgresTypes
+
+# =============================================================================
+# PostGIS — use Jason for GeoJSON encoding/decoding
+# =============================================================================
+config :geo_postgis,
+  json_library: Jason
+
+# =============================================================================
+# Oban — background job queues
+# =============================================================================
+config :qcommerce, Oban,
+  repo: Qcommerce.Repo,
+  plugins: [
+    Oban.Plugins.Pruner,
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"*/15 * * * *", Qcommerce.Ledger.Workers.CheckpointBalancesWorker},
+       {"0 1 * * *", Qcommerce.Ledger.Workers.NightlyReportWorker}
+     ]}
+  ],
+  queues: [
+    default: 10,
+    ledger: 5,
+    checkpoint: 2,
+    provisioning: 2,
+    reports: 1
+  ]
+
+# =============================================================================
+# Guardian — JWT auth (secret overridden per-environment below)
+# =============================================================================
+config :qcommerce, Qcommerce.Auth.Guardian,
+  issuer: "qcommerce",
+  secret_key: "OVERRIDE_IN_ENV_CONFIG",
+  token_ttl: %{
+    "access" => {1, :hour},
+    "refresh" => {30, :days}
+  }
+
+# =============================================================================
+# Phoenix
+# =============================================================================
 config :qcommerce, QcommerceWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
@@ -33,7 +76,7 @@ config :qcommerce, Qcommerce.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,
-  version: "0.17.11",
+  version: "0.25.0",
   qcommerce: [
     args:
       ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
@@ -56,7 +99,7 @@ config :tailwind,
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  metadata: [:request_id, :oban_job_id, :oban_queue, :oban_worker]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
