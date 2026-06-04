@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCommerce — Delivered in Minutes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c-bg:#0a0a0f;
+  --c-bg2:#111118;
+  --c-bg3:#16161f;
+  --c-surface:#1c1c27;
+  --c-surface2:#22222f;
+  --c-border:rgba(255,255,255,0.07);
+  --c-border2:rgba(255,255,255,0.12);
+  --c-text:#f0eff8;
+  --c-text2:#9998b0;
+  --c-text3:#5f5e7a;
+  --c-accent:#7c6fff;
+  --c-accent2:#a594ff;
+  --c-lime:#b8ff47;
+  --c-lime2:#d4ff7a;
+  --c-orange:#ff6b35;
+  --c-pink:#ff3d7a;
+  --font-display:'Syne',sans-serif;
+  --font-body:'DM Sans',sans-serif;
+  --r-sm:8px;
+  --r-md:14px;
+  --r-lg:20px;
+  --r-xl:28px;
+  --r-full:999px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--c-bg);color:var(--c-text);font-family:var(--font-body);font-size:16px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* ── NOISE TEXTURE overlay ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+
+/* ── GLOW ORBS ── */
+.orb{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+.orb-1{width:600px;height:600px;background:rgba(124,111,255,0.12);top:-200px;right:-100px}
+.orb-2{width:500px;height:500px;background:rgba(184,255,71,0.06);bottom:-100px;left:-150px}
+.orb-3{width:400px;height:400px;background:rgba(255,61,122,0.07);top:50%;left:50%;transform:translate(-50%,-50%)}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 clamp(1rem,4vw,3rem);height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,15,0.7);backdrop-filter:blur(20px);border-bottom:0.5px solid var(--c-border)}
+.nav-logo{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-0.5px;color:var(--c-text);text-decoration:none;display:flex;align-items:center;gap:8px}
+.nav-logo-dot{width:8px;height:8px;background:var(--c-lime);border-radius:50%;display:inline-block;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.nav-links{display:flex;align-items:center;gap:clamp(1rem,2vw,2rem)}
+.nav-links a{color:var(--c-text2);text-decoration:none;font-size:14px;font-weight:400;transition:color .2s}
+.nav-links a:hover{color:var(--c-text)}
+.nav-cta{background:var(--c-lime);color:#0a0a0f;padding:9px 20px;border-radius:var(--r-full);font-size:14px;font-weight:600;text-decoration:none;font-family:var(--font-display);transition:all .2s;white-space:nowrap}
+.nav-cta:hover{background:var(--c-lime2);transform:translateY(-1px)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.nav-hamburger span{width:22px;height:1.5px;background:var(--c-text);border-radius:2px;transition:all .3s}
+
+/* ── HERO ── */
+.hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px clamp(1rem,5vw,4rem) 60px;text-align:center;z-index:1}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(184,255,71,0.1);border:0.5px solid rgba(184,255,71,0.25);color:var(--c-lime);padding:6px 14px;border-radius:var(--r-full);font-size:12px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:28px;animation:fadeUp .6s ease both}
+.hero-badge-dot{width:6px;height:6px;background:var(--c-lime);border-radius:50%;animation:pulse 1.5s ease-in-out infinite}
+.hero-title{font-family:var(--font-display);font-size:clamp(2.8rem,8vw,6.5rem);font-weight:800;line-height:1.0;letter-spacing:-2px;color:var(--c-text);margin-bottom:24px;animation:fadeUp .6s .1s ease both}
+.hero-title span{color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,0.25)}
+.hero-title .accent{color:var(--c-lime);-webkit-text-stroke:0}
+.hero-sub{font-size:clamp(1rem,2.5vw,1.2rem);color:var(--c-text2);max-width:560px;line-height:1.7;margin-bottom:40px;font-weight:300;animation:fadeUp .6s .2s ease both}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;animation:fadeUp .6s .3s ease both}
+.btn-primary{background:var(--c-lime);color:#0a0a0f;padding:14px 32px;border-radius:var(--r-full);font-size:15px;font-weight:700;font-family:var(--font-display);text-decoration:none;transition:all .25s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{background:var(--c-lime2);transform:translateY(-2px);box-shadow:0 12px 40px rgba(184,255,71,0.25)}
+.btn-secondary{background:transparent;color:var(--c-text);padding:14px 32px;border-radius:var(--r-full);font-size:15px;font-weight:500;font-family:var(--font-display);text-decoration:none;border:0.5px solid var(--c-border2);transition:all .25s;display:inline-flex;align-items:center;gap:8px}
+.btn-secondary:hover{background:var(--c-surface);border-color:var(--c-accent)}
+.btn-arrow{display:inline-block;transition:transform .2s}
+.btn-primary:hover .btn-arrow,.btn-secondary:hover .btn-arrow{transform:translateX(4px)}
+.hero-stats{display:flex;gap:clamp(1.5rem,4vw,3.5rem);margin-top:56px;animation:fadeUp .6s .4s ease both;flex-wrap:wrap;justify-content:center}
+.hero-stat{text-align:center}
+.hero-stat-num{font-family:var(--font-display);font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;color:var(--c-text);letter-spacing:-1px}
+.hero-stat-label{font-size:12px;color:var(--c-text3);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.hero-stat-divider{width:0.5px;background:var(--c-border2);align-self:stretch}
+.hero-scroll{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--c-text3);font-size:12px;letter-spacing:.5px;text-transform:uppercase;animation:fadeUp .6s .6s ease both}
+.scroll-line{width:0.5px;height:40px;background:linear-gradient(to bottom,var(--c-accent),transparent);animation:scrollAnim 1.5s ease-in-out infinite}
+@keyframes scrollAnim{0%{opacity:0;transform:scaleY(0);transform-origin:top}50%{opacity:1;transform:scaleY(1)}100%{opacity:0;transform:scaleY(1);transform-origin:bottom}}
+
+/* ── MARQUEE ── */
+.marquee-section{position:relative;z-index:1;padding:24px 0;border-top:0.5px solid var(--c-border);border-bottom:0.5px solid var(--c-border);overflow:hidden;background:var(--c-bg2)}
+.marquee-track{display:flex;gap:0;width:max-content;animation:marquee 25s linear infinite}
+.marquee-track:hover{animation-play-state:paused}
+.marquee-item{display:flex;align-items:center;gap:10px;padding:0 36px;white-space:nowrap;color:var(--c-text3);font-size:13px;font-weight:400;letter-spacing:.3px}
+.marquee-item-dot{width:4px;height:4px;background:var(--c-accent);border-radius:50%}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ── SECTIONS ── */
+section{position:relative;z-index:1}
+.section-inner{max-width:1200px;margin:0 auto;padding:0 clamp(1rem,5vw,4rem)}
+.section-label{display:inline-flex;align-items:center;gap:6px;color:var(--c-accent2);font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px}
+.section-label::before{content:'';width:20px;height:0.5px;background:var(--c-accent2)}
+.section-title{font-family:var(--font-display);font-size:clamp(1.8rem,4vw,3rem);font-weight:800;line-height:1.1;letter-spacing:-1px;color:var(--c-text);margin-bottom:16px}
+.section-sub{color:var(--c-text2);font-size:clamp(0.95rem,1.5vw,1.05rem);max-width:520px;line-height:1.7;font-weight:300}
+
+/* ── HOW IT WORKS ── */
+.how{padding:100px 0}
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;margin-top:56px;background:var(--c-border)}
+.how-card{background:var(--c-bg);padding:36px 28px;position:relative;overflow:hidden;transition:background .25s}
+.how-card:hover{background:var(--c-bg2)}
+.how-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--c-accent),transparent);opacity:0;transition:opacity .3s}
+.how-card:hover::before{opacity:1}
+.how-num{font-family:var(--font-display);font-size:52px;font-weight:800;color:rgba(124,111,255,0.12);line-height:1;margin-bottom:20px;letter-spacing:-2px}
+.how-icon{width:44px;height:44px;background:var(--c-surface);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px}
+.how-card-title{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--c-text);margin-bottom:8px}
+.how-card-desc{font-size:14px;color:var(--c-text2);line-height:1.6;font-weight:300}
+
+/* ── CATEGORIES ── */
+.cats{padding:80px 0}
+.cats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:48px}
+.cat-card{background:var(--c-surface);border:0.5px solid var(--c-border);border-radius:var(--r-lg);padding:20px 16px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.cat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,111,255,0.08),transparent);opacity:0;transition:opacity .3s}
+.cat-card:hover{border-color:var(--c-accent);transform:translateY(-3px);background:var(--c-surface2)}
+.cat-card:hover::after{opacity:1}
+.cat-emoji{font-size:28px;display:block;margin-bottom:8px}
+.cat-name{font-size:12px;font-weight:500;color:var(--c-text2);letter-spacing:.3px}
+.cat-count{font-size:11px;color:var(--c-text3);margin-top:3px}
+
+/* ── FEATURED PRODUCTS ── */
+.products{padding:80px 0;background:var(--c-bg2)}
+.products-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:48px;flex-wrap:gap}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.product-card{background:var(--c-bg);border:0.5px solid var(--c-border);border-radius:var(--r-xl);overflow:hidden;transition:all .25s;cursor:pointer}
+.product-card:hover{border-color:var(--c-border2);transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,0.4)}
+.product-img{aspect-ratio:1;background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:52px;position:relative}
+.product-badge{position:absolute;top:12px;left:12px;background:var(--c-lime);color:#0a0a0f;font-size:10px;font-weight:700;padding:3px 8px;border-radius:var(--r-full);font-family:var(--font-display);letter-spacing:.3px}
+.product-badge.hot{background:var(--c-orange);color:#fff}
+.product-body{padding:16px}
+.product-name{font-size:14px;font-weight:500;color:var(--c-text);margin-bottom:4px;line-height:1.3}
+.product-meta{font-size:12px;color:var(--c-text3);margin-bottom:12px}
+.product-footer{display:flex;align-items:center;justify-content:space-between}
+.product-price{font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--c-text)}
+.product-price span{font-size:12px;color:var(--c-text3);font-weight:400;text-decoration:line-through;margin-left:4px;font-family:var(--font-body)}
+.add-btn{width:32px;height:32px;background:var(--c-lime);color:#0a0a0f;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;font-weight:700;transition:all .2s;flex-shrink:0}
+.add-btn:hover{background:var(--c-lime2);transform:scale(1.1)}
+
+/* ── DELIVERY PROMISE ── */
+.promise{padding:100px 0}
+.promise-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:60px}
+.promise-visual{position:relative;aspect-ratio:1;max-width:480px}
+.promise-map{background:var(--c-surface);border-radius:var(--r-xl);border:0.5px solid var(--c-border);width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.map-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(124,111,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(124,111,255,0.05) 1px,transparent 1px);background-size:32px 32px}
+.map-pulse{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+.map-pulse::before,.map-pulse::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%}
+.map-pulse::before{width:60px;height:60px;background:rgba(124,111,255,0.15);animation:mapPulse 2s ease-out infinite}
+.map-pulse::after{width:100px;height:100px;background:rgba(124,111,255,0.07);animation:mapPulse 2s .5s ease-out infinite}
+@keyframes mapPulse{0%{transform:translate(-50%,-50%) scale(0.8);opacity:1}100%{transform:translate(-50%,-50%) scale(2);opacity:0}}
+.map-pin{width:20px;height:20px;background:var(--c-accent);border-radius:50% 50% 50% 0;transform:rotate(-45deg);position:absolute;top:50%;left:50%;margin:-10px 0 0 -10px;box-shadow:0 0 0 4px rgba(124,111,255,0.2)}
+.map-rider{position:absolute;background:var(--c-surface2);border:0.5px solid var(--c-border2);border-radius:var(--r-md);padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text2)}
+.map-rider-dot{width:8px;height:8px;background:var(--c-lime);border-radius:50%;animation:pulse 1.5s ease-in-out infinite}
+.promise-features{display:flex;flex-direction:column;gap:24px}
+.promise-item{display:flex;gap:16px;align-items:flex-start}
+.promise-icon{width:48px;height:48px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.promise-icon.purple{background:rgba(124,111,255,0.12)}
+.promise-icon.lime{background:rgba(184,255,71,0.1)}
+.promise-icon.orange{background:rgba(255,107,53,0.1)}
+.promise-item-title{font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--c-text);margin-bottom:4px}
+.promise-item-desc{font-size:14px;color:var(--c-text2);line-height:1.6;font-weight:300}
+
+/* ── APP BANNER ── */
+.app-banner{padding:80px 0}
+.app-inner{background:var(--c-surface);border:0.5px solid var(--c-border);border-radius:var(--r-xl);padding:clamp(2rem,5vw,4rem);display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center;overflow:hidden;position:relative}
+.app-inner::before{content:'';position:absolute;top:-60px;right:120px;width:300px;height:300px;background:rgba(124,111,255,0.08);border-radius:50%;filter:blur(60px)}
+.app-title{font-family:var(--font-display);font-size:clamp(1.6rem,3.5vw,2.5rem);font-weight:800;letter-spacing:-1px;color:var(--c-text);margin-bottom:12px}
+.app-sub{color:var(--c-text2);font-size:clamp(0.9rem,1.5vw,1rem);line-height:1.6;max-width:420px;font-weight:300;margin-bottom:28px}
+.app-buttons{display:flex;gap:12px;flex-wrap:wrap}
+.app-store-btn{display:flex;align-items:center;gap:10px;background:var(--c-bg);border:0.5px solid var(--c-border2);padding:10px 18px;border-radius:var(--r-md);cursor:pointer;transition:all .2s;text-decoration:none}
+.app-store-btn:hover{border-color:var(--c-accent);background:var(--c-surface2)}
+.app-store-icon{font-size:22px}
+.app-store-text{display:flex;flex-direction:column}
+.app-store-text span:first-child{font-size:10px;color:var(--c-text3);letter-spacing:.3px}
+.app-store-text span:last-child{font-size:14px;font-weight:600;color:var(--c-text);font-family:var(--font-display)}
+.app-phone{font-size:clamp(60px,10vw,90px);filter:drop-shadow(0 20px 40px rgba(124,111,255,0.3));animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+/* ── TESTIMONIALS ── */
+.testimonials{padding:80px 0;background:var(--c-bg2)}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:48px}
+.testi-card{background:var(--c-bg);border:0.5px solid var(--c-border);border-radius:var(--r-xl);padding:24px;transition:border-color .25s}
+.testi-card:hover{border-color:var(--c-border2)}
+.testi-stars{color:var(--c-lime);font-size:14px;margin-bottom:12px;letter-spacing:2px}
+.testi-text{font-size:14px;color:var(--c-text2);line-height:1.7;font-weight:300;margin-bottom:16px;font-style:italic}
+.testi-author{display:flex;align-items:center;gap:10px}
+.testi-avatar{width:36px;height:36px;border-radius:50%;background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-family:var(--font-display);color:var(--c-accent2)}
+.testi-name{font-size:13px;font-weight:500;color:var(--c-text)}
+.testi-loc{font-size:11px;color:var(--c-text3)}
+
+/* ── FOOTER ── */
+footer{padding:60px 0 32px;border-top:0.5px solid var(--c-border)}
+.footer-grid{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:40px;margin-bottom:48px}
+.footer-brand{max-width:280px}
+.footer-logo{font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--c-text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.footer-desc{font-size:14px;color:var(--c-text3);line-height:1.7;font-weight:300}
+.footer-col-title{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--c-text);letter-spacing:.5px;margin-bottom:16px;text-transform:uppercase}
+.footer-links{list-style:none;display:flex;flex-direction:column;gap:10px}
+.footer-links a{font-size:14px;color:var(--c-text3);text-decoration:none;transition:color .2s;font-weight:300}
+.footer-links a:hover{color:var(--c-text)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:24px;border-top:0.5px solid var(--c-border);flex-wrap:wrap;gap:12px}
+.footer-copy{font-size:13px;color:var(--c-text3)}
+.footer-social{display:flex;gap:12px}
+.social-btn{width:36px;height:36px;background:var(--c-surface);border:0.5px solid var(--c-border);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .2s;text-decoration:none;color:var(--c-text2)}
+.social-btn:hover{border-color:var(--c-accent);color:var(--c-accent)}
+
+/* ── CART PILL ── */
+.cart-pill{position:fixed;bottom:24px;right:24px;z-index:99;background:var(--c-lime);color:#0a0a0f;padding:12px 20px;border-radius:var(--r-full);display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--font-display);font-size:14px;font-weight:700;box-shadow:0 8px 32px rgba(184,255,71,0.3);transition:all .25s;animation:slideUp .5s 1s ease both}
+.cart-pill:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(184,255,71,0.4)}
+.cart-count{background:#0a0a0f;color:var(--c-lime);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px}
+@keyframes slideUp{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  .promise-grid{grid-template-columns:1fr;gap:40px}
+  .promise-visual{max-width:100%;aspect-ratio:16/9}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:768px){
+  .nav-links{display:none}
+  .nav-hamburger{display:flex}
+  .hero-title{letter-spacing:-1px}
+  .how-grid{grid-template-columns:1fr}
+  .how-grid .how-card{border-bottom:0.5px solid var(--c-border)}
+  .app-inner{grid-template-columns:1fr}
+  .app-phone{display:none}
+  .footer-grid{grid-template-columns:1fr}
+  .products-header{flex-direction:column;align-items:flex-start;gap:12px}
+}
+@media(max-width:480px){
+  .hero-stats{gap:1rem}
+  .hero-stat-divider{display:none}
+  .cats-grid{grid-template-columns:repeat(3,1fr)}
+  .products-grid{grid-template-columns:repeat(2,1fr)}
+  .testimonials-grid{grid-template-columns:1fr}
+}
+
+/* ── MOBILE NAV OPEN ── */
+.mobile-nav{position:fixed;inset:0;background:var(--c-bg);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;transform:translateX(100%);transition:transform .35s ease}
+.mobile-nav.open{transform:translateX(0)}
+.mobile-nav a{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--c-text);text-decoration:none;letter-spacing:-1px}
+.mobile-nav a:hover{color:var(--c-lime)}
+.mobile-nav-close{position:absolute;top:24px;right:24px;background:none;border:0.5px solid var(--c-border);color:var(--c-text);width:40px;height:40px;border-radius:var(--r-sm);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <span class="nav-logo-dot"></span>
+    QCommerce
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#categories">Shop</a>
+    <a href="#app">App</a>
+    <a href="#">Become a rider</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="#" class="nav-cta">Order now</a>
+    <div class="nav-hamburger" id="hamburger" onclick="openMobileNav()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+  <a href="#how" onclick="closeMobileNav()">How it works</a>
+  <a href="#categories" onclick="closeMobileNav()">Shop</a>
+  <a href="#app" onclick="closeMobileNav()">App</a>
+  <a href="#" onclick="closeMobileNav()">Become a rider</a>
+  <a href="#" class="btn-primary" style="margin-top:8px">Order now →</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge"><span class="hero-badge-dot"></span>Now delivering in 10 minutes</div>
+  <h1 class="hero-title">
+    Groceries at<br>
+    <span class="accent">lightning</span> speed<span style="color:var(--c-accent)">.</span>
+  </h1>
+  <p class="hero-sub">Fresh produce, daily essentials, and everything you need — delivered to your door before you finish making your list.</p>
+  <div class="hero-actions">
+    <a href="#" class="btn-primary">Start shopping <span class="btn-arrow">→</span></a>
+    <a href="#how" class="btn-secondary">See how it works <span class="btn-arrow">↓</span></a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-num">10<span style="color:var(--c-lime);font-size:0.6em">min</span></div>
+      <div class="hero-stat-label">Avg delivery</div>
+    </div>
+    <div class="hero-stat-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">5K+</div>
+      <div class="hero-stat-label">Products</div>
+    </div>
+    <div class="hero-stat-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">50+</div>
+      <div class="hero-stat-label">Dark stores</div>
+    </div>
+    <div class="hero-stat-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">4.9★</div>
+      <div class="hero-stat-label">Avg rating</div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-section">
+  <div class="marquee-track" id="marqueeTrack">
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Fresh Fruits & Vegetables</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Dairy & Eggs</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Bakery & Bread</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Beverages</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Snacks & Munchies</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Personal Care</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Cleaning Essentials</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Baby Products</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Frozen Food</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Pet Care</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Fresh Fruits & Vegetables</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Dairy & Eggs</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Bakery & Bread</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Beverages</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Snacks & Munchies</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Personal Care</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Cleaning Essentials</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Baby Products</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Frozen Food</div>
+    <div class="marquee-item"><span class="marquee-item-dot"></span>Pet Care</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="how reveal" id="how">
+  <div class="section-inner">
+    <div class="section-label">Process</div>
+    <h2 class="section-title">From tap to doorstep<br>in three steps</h2>
+    <p class="section-sub">We've engineered every minute of the delivery experience. No waiting, no wondering.</p>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-num">01</div>
+        <div class="how-icon">📍</div>
+        <div class="how-card-title">Set your location</div>
+        <div class="how-card-desc">We find the nearest dark store stocked and ready. Your order is picked from less than 2km away.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">02</div>
+        <div class="how-icon">🛒</div>
+        <div class="how-card-title">Build your cart</div>
+        <div class="how-card-desc">Browse 5,000+ products with real-time stock updates. What you see is what we have — no substitutions.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">03</div>
+        <div class="how-icon">⚡</div>
+        <div class="how-card-title">Track in real-time</div>
+        <div class="how-card-desc">Watch your rider on live GPS from the moment they leave the store. Get notified at every step.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">04</div>
+        <div class="how-icon">🎉</div>
+        <div class="how-card-title">Delivered fresh</div>
+        <div class="how-card-desc">Average 10-minute delivery. Cold chain maintained end-to-end. Rate and reorder in one tap.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section class="cats reveal" id="categories">
+  <div class="section-inner">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:0">
+      <div>
+        <div class="section-label">Catalog</div>
+        <h2 class="section-title" style="margin-bottom:0">Shop by category</h2>
+      </div>
+      <a href="#" class="btn-secondary" style="font-size:13px;padding:10px 20px">View all →</a>
+    </div>
+    <div class="cats-grid">
+      <div class="cat-card"><span class="cat-emoji">🥬</span><div class="cat-name">Vegetables</div><div class="cat-count">180+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🍎</span><div class="cat-name">Fruits</div><div class="cat-count">90+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🥛</span><div class="cat-name">Dairy</div><div class="cat-count">120+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🍞</span><div class="cat-name">Bakery</div><div class="cat-count">60+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🥩</span><div class="cat-name">Meat</div><div class="cat-count">80+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🧃</span><div class="cat-name">Beverages</div><div class="cat-count">200+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🍫</span><div class="cat-name">Snacks</div><div class="cat-count">300+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🧴</span><div class="cat-name">Beauty</div><div class="cat-count">150+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🧹</span><div class="cat-name">Cleaning</div><div class="cat-count">100+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">👶</span><div class="cat-name">Baby</div><div class="cat-count">90+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">🐾</span><div class="cat-name">Pet Care</div><div class="cat-count">70+ items</div></div>
+      <div class="cat-card"><span class="cat-emoji">❄️</span><div class="cat-name">Frozen</div><div class="cat-count">110+ items</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="products reveal" id="products">
+  <div class="section-inner">
+    <div class="products-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:48px">
+      <div>
+        <div class="section-label">Featured</div>
+        <h2 class="section-title" style="margin-bottom:0">Best sellers today</h2>
+      </div>
+      <a href="#" class="btn-secondary" style="font-size:13px;padding:10px 20px">See all →</a>
+    </div>
+    <div class="products-grid">
+      <div class="product-card">
+        <div class="product-img">🥑<div class="product-badge">NEW</div></div>
+        <div class="product-body">
+          <div class="product-name">Organic Avocado</div>
+          <div class="product-meta">Pack of 3 · Ready to eat</div>
+          <div class="product-footer">
+            <div class="product-price">₹89 <span>₹120</span></div>
+            <button class="add-btn">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="product-card">
+        <div class="product-img">🥛<div class="product-badge hot">HOT</div></div>
+        <div class="product-body">
+          <div class="product-name">Farm Fresh Milk</div>
+          <div class="product-meta">500ml · Full cream</div>
+          <div class="product-footer">
+            <div class="product-price">₹32</div>
+            <button class="add-btn">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="product-card">
+        <div class="product-img">🍳</div>
+        <div class="product-body">
+          <div class="product-name">Free Range Eggs</div>
+          <div class="product-meta">Tray of 12 · Large</div>
+          <div class="product-footer">
+            <div class="product-price">₹95 <span>₹110</span></div>
+            <button class="add-btn">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="product-card">
+        <div class="product-img">🍞<div class="product-badge">FRESH</div></div>
+        <div class="product-body">
+          <div class="product-name">Sourdough Loaf</div>
+          <div class="product-meta">400g · Baked today</div>
+          <div class="product-footer">
+            <div class="product-price">₹85</div>
+            <button class="add-btn">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DELIVERY PROMISE -->
+<section class="promise reveal" id="promise">
+  <div class="section-inner">
+    <div class="section-label">Why QCommerce</div>
+    <h2 class="section-title">Built different.<br>Delivered better.</h2>
+    <div class="promise-grid">
+      <div class="promise-visual">
+        <div class="promise-map">
+          <div class="map-grid"></div>
+          <div class="map-pulse"></div>
+          <div class="map-pin"></div>
+          <div class="map-rider" style="bottom:20%;right:10%">
+            <div class="map-rider-dot"></div>
+            <span>Rider en route · 2 min</span>
+          </div>
+          <div class="map-rider" style="top:15%;left:10%;font-size:11px">
+            <span>📦 Order picked · 1 min ago</span>
+          </div>
+        </div>
+      </div>
+      <div class="promise-features">
+        <div class="promise-item">
+          <div class="promise-icon purple">⚡</div>
+          <div>
+            <div class="promise-item-title">10-minute delivery guarantee</div>
+            <div class="promise-item-desc">Our dark stores are strategically placed within 2km of dense residential areas. We pick, pack and dispatch in under 3 minutes.</div>
+          </div>
+        </div>
+        <div class="promise-item">
+          <div class="promise-icon lime">🌡️</div>
+          <div>
+            <div class="promise-item-title">Cold chain end-to-end</div>
+            <div class="promise-item-desc">Insulated packaging and temperature-monitored storage keeps your dairy, meat and frozen items fresh from shelf to door.</div>
+          </div>
+        </div>
+        <div class="promise-item">
+          <div class="promise-icon orange">🔄</div>
+          <div>
+            <div class="promise-item-title">Instant replacements</div>
+            <div class="promise-item-desc">Something wrong? We re-deliver or refund in under 10 minutes. No forms, no calls — just tap the issue and we handle it.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials reveal">
+  <div class="section-inner">
+    <div class="section-label">Reviews</div>
+    <h2 class="section-title">People love QCommerce</h2>
+    <div class="testimonials-grid">
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"Ordered at 11pm and had fresh milk and eggs at my door in 8 minutes. Genuinely shocked. The app experience is miles ahead of anything else I've used."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">PR</div>
+          <div>
+            <div class="testi-name">Priya Ramaswamy</div>
+            <div class="testi-loc">Mumbai · 200+ orders</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"I use QCommerce every single day. The real-time tracking is addictive — watching the rider zoom to my building on the map never gets old. Quality is consistently excellent."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">AK</div>
+          <div>
+            <div class="testi-name">Arjun Khanna</div>
+            <div class="testi-loc">Delhi · 400+ orders</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"The fresh produce quality is better than my local store and it arrives faster than I can walk there. The avocados are always perfectly ripe. Incredible."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">SM</div>
+          <div>
+            <div class="testi-name">Sneha Mehta</div>
+            <div class="testi-loc">Bangalore · 150+ orders</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APP BANNER -->
+<section class="app-banner reveal" id="app">
+  <div class="section-inner">
+    <div class="app-inner">
+      <div>
+        <div class="section-label" style="margin-bottom:16px">Mobile app</div>
+        <h2 class="app-title">Everything faster<br>in the app</h2>
+        <p class="app-sub">One-tap reorder, live rider tracking, personalized deals, and instant support — all in your pocket. Free to download.</p>
+        <div class="app-buttons">
+          <a href="#" class="app-store-btn">
+            <span class="app-store-icon">🍎</span>
+            <div class="app-store-text">
+              <span>Download on the</span>
+              <span>App Store</span>
+            </div>
+          </a>
+          <a href="#" class="app-store-btn">
+            <span class="app-store-icon">▶</span>
+            <div class="app-store-text">
+              <span>Get it on</span>
+              <span>Google Play</span>
+            </div>
+          </a>
+        </div>
+      </div>
+      <div class="app-phone">📱</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="section-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo"><span class="nav-logo-dot"></span>QCommerce</div>
+        <p class="footer-desc">The fastest grocery delivery platform built for modern cities. 10-minute delivery, 5,000+ products, zero compromise on freshness.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <ul class="footer-links">
+          <li><a href="#">About us</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press</a></li>
+          <li><a href="#">Blog</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Help</div>
+        <ul class="footer-links">
+          <li><a href="#">Track order</a></li>
+          <li><a href="#">Returns</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <ul class="footer-links">
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Cookie Policy</a></li>
+          <li><a href="#">Refund Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 QCommerce. All rights reserved.</div>
+      <div class="footer-social">
+        <a href="#" class="social-btn" title="Twitter">𝕏</a>
+        <a href="#" class="social-btn" title="Instagram">▣</a>
+        <a href="#" class="social-btn" title="LinkedIn">in</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- CART PILL -->
+<div class="cart-pill" id="cartPill" style="display:none">
+  🛒 View cart
+  <span class="cart-count" id="cartCount">0</span>
+</div>
+
+<script>
+let cartItems = 0;
+document.querySelectorAll('.add-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    cartItems++;
+    document.getElementById('cartCount').textContent = cartItems;
+    const pill = document.getElementById('cartPill');
+    pill.style.display = 'flex';
+    this.textContent = '✓';
+    this.style.background = 'var(--c-accent)';
+    this.style.color = '#fff';
+    setTimeout(() => {
+      this.textContent = '+';
+      this.style.background = 'var(--c-lime)';
+      this.style.color = '#0a0a0f';
+    }, 800);
+  });
+});
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) { e.target.classList.add('visible'); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+function openMobileNav(){ document.getElementById('mobileNav').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeMobileNav(){ document.getElementById('mobileNav').classList.remove('open'); document.body.style.overflow=''; }
+
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const nav = document.querySelector('nav');
+  const scroll = window.scrollY;
+  if(scroll > 80) nav.style.background = 'rgba(10,10,15,0.95)';
+  else nav.style.background = 'rgba(10,10,15,0.7)';
+  lastScroll = scroll;
+});
+
+document.querySelectorAll('.cat-card').forEach(card => {
+  card.addEventListener('click', function() {
+    this.style.borderColor = 'var(--c-lime)';
+    setTimeout(() => this.style.borderColor = '', 600);
+  });
+});
+</script>
+</body>
+</html>

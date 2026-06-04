@@ -17,7 +17,8 @@ defmodule Qcommerce.Application do
       # Start a worker by calling: Qcommerce.Worker.start_link(arg)
       # {Qcommerce.Worker, arg},
       # Start to serve requests, typically the last entry
-      QcommerceWeb.Endpoint
+      QcommerceWeb.Endpoint,
+      Qcommerce.Delivery.RiderTracker
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -20,8 +20,12 @@ defmodule Qcommerce.Orders.Pipeline.Confirm do
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{order: order}} -> {:ok, order}
-      {:error, _, changeset, _} -> {:error, Error.validation(changeset)}
+      {:ok, %{order: order}} ->
+        QcommerceWeb.OrderChannel.broadcast_status_update(order.id, :confirmed)
+        {:ok, order}
+
+      {:error, _, changeset, _} ->
+        {:error, Error.validation(changeset)}
     end
   end
 

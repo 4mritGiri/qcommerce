@@ -5,6 +5,12 @@ import Config
 # =============================================================================
 config :qcommerce, ecto_repos: [Qcommerce.Repo]
 
+config :cors_plug,
+  # your frontend origins
+  origin: ["http://localhost:3000"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  headers: ["Authorization", "Content-Type"]
+
 # =============================================================================
 # Ecto / PostgreSQL — base repo config applied in ALL environments
 # types: must be set here (not dev.exs) so test and prod also get PostGIS types

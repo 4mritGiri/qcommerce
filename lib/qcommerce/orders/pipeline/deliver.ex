@@ -29,8 +29,18 @@ defmodule Qcommerce.Orders.Pipeline.Deliver do
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{order: order}} -> {:ok, order}
-      {:error, _, changeset, _} -> {:error, Error.validation(changeset)}
+      {:ok, %{order: order}} ->
+        order = Repo.reload!(order)
+        QcommerceWeb.OrderChannel.broadcast_status_update(
+          order.id,
+          :delivered,
+          %{delivered_at: order.delivered_at}
+        )
+
+        {:ok, order}
+
+      {:error, _, changeset, _} ->
+        {:error, Error.validation(changeset)}
     end
   end
 

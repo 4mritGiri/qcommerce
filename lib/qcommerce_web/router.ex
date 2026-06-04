@@ -1,5 +1,12 @@
+# lib/qcommerce_web/router.ex
 defmodule QcommerceWeb.Router do
   use QcommerceWeb, :router
+
+  alias QcommerceWeb.Plugs.{AuthPlug, SetCurrentUser}
+
+  # ---------------------------------------------------------------------------
+  # Pipelines
+  # ---------------------------------------------------------------------------
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -10,8 +17,28 @@ defmodule QcommerceWeb.Router do
     plug :put_secure_browser_headers
   end
 
+  # Public JSON API — no auth required
   pipeline :api do
     plug :accepts, ["json"]
+    plug CORSPlug
+  end
+
+  # Authenticated JSON API — requires valid JWT Bearer token
+  pipeline :api_authenticated do
+    plug :accepts, ["json"]
+    plug CORSPlug
+    plug Qcommerce.Auth.Pipeline
+    plug SetCurrentUser
+  end
+
+  # Branch manager only — authenticated + role check
+  pipeline :branch_manager do
+    plug AuthPlug, roles: [:branch_manager, :super_admin]
+  end
+
+  # Super admin only
+  pipeline :super_admin do
+    plug AuthPlug, roles: [:super_admin]
   end
 
   scope "/", QcommerceWeb do
@@ -20,10 +47,64 @@ defmodule QcommerceWeb.Router do
     get "/", PageController, :home
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", QcommerceWeb do
-  #   pipe_through :api
-  # end
+  # ---------------------------------------------------------------------------
+  # Public API routes — no authentication needed
+  # ---------------------------------------------------------------------------
+
+  scope "/api/v1", QcommerceWeb.Api.V1, as: :api_v1 do
+    pipe_through :api
+
+    # Auth
+    post "/auth/register", AuthController, :register
+    post "/auth/login", AuthController, :login
+
+    # Public catalog browsing
+    get "/categories", ProductController, :categories
+    get "/branches/:branch_id/products", ProductController, :index
+    get "/branches/:branch_id/products/:id", ProductController, :show
+  end
+
+  # ---------------------------------------------------------------------------
+  # Authenticated customer API routes
+  # ---------------------------------------------------------------------------
+
+  scope "/api/v1", QcommerceWeb.Api.V1, as: :api_v1 do
+    pipe_through :api_authenticated
+
+    # Auth
+    get "/auth/me", AuthController, :me
+    delete "/auth/logout", AuthController, :logout
+
+    # Cart validation
+    post "/cart/validate", CartController, :validate
+
+    # Orders
+    post "/orders", OrderController, :create
+    get "/orders", OrderController, :index
+    get "/orders/:id", OrderController, :show
+    delete "/orders/:id", OrderController, :cancel
+  end
+
+  # ---------------------------------------------------------------------------
+  # Branch manager routes — authenticated + branch_manager role
+  # ---------------------------------------------------------------------------
+
+  scope "/api/v1/branch", QcommerceWeb.Api.V1, as: :branch do
+    pipe_through [:api_authenticated, :branch_manager]
+
+    # Branch order management (to be added)
+    # get  "/orders",           BranchOrderController, :index
+    # put  "/orders/:id/confirm", BranchOrderController, :confirm
+    # put  "/orders/:id/deliver", BranchOrderController, :deliver
+
+    # Inventory management (to be added)
+    # get  "/inventory",        InventoryController, :index
+    # put  "/inventory/:id",    InventoryController, :update
+  end
+
+  # ---------------------------------------------------------------------------
+  # Dev routes
+  # ---------------------------------------------------------------------------
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:qcommerce, :dev_routes) do

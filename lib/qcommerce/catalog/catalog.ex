@@ -16,16 +16,17 @@ defmodule Qcommerce.Catalog do
   # Products
   # ---------------------------------------------------------------------------
 
-  def list_products(params \\ []) do
+  def list_products(params \\ %{}) do
     base =
       Product
-      |> Query.filter_by(:is_active, params[:is_active])
-      |> Query.filter_by(:category_id, params[:category_id])
-      |> Query.search([:name, :sku], params[:q])
-      |> Query.sort(params[:sort], params[:dir], allowed: [:name, :base_price, :inserted_at])
+      |> Query.filter_by(:branch_id, params["branch_id"])
+      |> Query.filter_by(:is_active, params["is_active"])
+      |> Query.filter_by(:category_id, params["category_id"])
+      |> Query.search([:name, :sku], params["q"])
+      |> Query.sort(params["sort"], params["dir"], allowed: [:name, :base_price, :inserted_at])
 
     total = Repo.aggregate(base, :count)
-    {paginated, meta} = Query.paginate(base, page: params[:page], per_page: params[:per_page])
+    {paginated, meta} = Query.paginate(base, page: params["page"], per_page: params["per_page"])
 
     {:ok, {Repo.all(paginated), Map.put(meta, :total, total)}}
   end
@@ -65,8 +66,7 @@ defmodule Qcommerce.Catalog do
   def list_categories(params \\ []) do
     categories =
       Category
-      |> Query.filter_by(:is_active, params[:is_active])
-      # top-level only; children via preload
+      |> Query.filter_by(:is_active, params["is_active"])
       |> where([c], is_nil(c.parent_id))
       |> order_by([c], asc: c.sort_order, asc: c.name)
       |> Query.with_preloads([:children])
