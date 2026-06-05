@@ -35,6 +35,11 @@ defmodule QcommerceWeb.HomeLive do
       |> assign(:current_user, current_user)
       |> assign(:show_login_modal, false)
       |> assign(:show_signup_modal, false)
+      |> assign(:login_tab, :qr)
+      |> assign(:qr_countdown, 60)
+      |> assign(:login_phone_step, 1)
+      |> assign(:phone_input, "")
+      |> assign(:otp_error, nil)
       |> assign(:slides, slides)
       |> assign(:current_slide, 0)
       |> assign(:categories, categories)
@@ -63,7 +68,19 @@ defmodule QcommerceWeb.HomeLive do
 
   @impl true
   def handle_info(:tick, socket) do
-    {:noreply, assign(socket, :flash_countdown, countdown_label(socket.assigns.flash_sale))}
+    countdown = countdown_label(socket.assigns.flash_sale)
+
+    qr_count =
+      if socket.assigns.show_login_modal and socket.assigns.login_tab == :qr do
+        if socket.assigns.qr_countdown <= 1, do: 60, else: socket.assigns.qr_countdown - 1
+      else
+        socket.assigns.qr_countdown
+      end
+
+    {:noreply,
+     socket
+     |> assign(:flash_countdown, countdown)
+     |> assign(:qr_countdown, qr_count)}
   end
 
   # ---------------------------------------------------------------------------
@@ -154,7 +171,15 @@ defmodule QcommerceWeb.HomeLive do
   end
 
   def handle_event("show_login", _, socket) do
-    {:noreply, assign(socket, show_login_modal: true, show_signup_modal: false)}
+    {:noreply, assign(socket,
+      show_login_modal: true,
+      show_signup_modal: false,
+      login_tab: :qr,
+      qr_countdown: 60,
+      login_phone_step: 1,
+      phone_input: "",
+      otp_error: nil
+    )}
   end
 
   def handle_event("close_login", _, socket) do
@@ -167,6 +192,44 @@ defmodule QcommerceWeb.HomeLive do
 
   def handle_event("close_signup", _, socket) do
     {:noreply, assign(socket, show_signup_modal: false)}
+  end
+
+  def handle_event("select_login_tab", %{"tab" => tab}, socket) do
+    tab_atom =
+      case tab do
+        "qr"      -> :qr
+        "phone"   -> :phone
+        "email"   -> :email
+        "passkey" -> :passkey
+        _         -> :qr
+      end
+    {:noreply, assign(socket, login_tab: tab_atom, login_phone_step: 1, otp_error: nil)}
+  end
+
+  def handle_event("submit_phone", %{"phone" => phone}, socket) do
+    if Regex.match?(~r/^\+?[0-9]{8,15}$/, String.trim(phone)) do
+      {:noreply, assign(socket, login_phone_step: 2, phone_input: String.trim(phone), otp_error: nil)}
+    else
+      {:noreply, put_flash(socket, :error, "Invalid phone number format.")}
+    end
+  end
+
+  def handle_event("submit_otp", %{"otp" => otp}, socket) do
+    if String.trim(otp) == "123456" do
+      phone = socket.assigns.phone_input
+      {:noreply, redirect(socket, to: ~p"/session/login_phone?phone=#{phone}")}
+    else
+      {:noreply, assign(socket, otp_error: "Invalid OTP. Please enter 123456.")}
+    end
+  end
+
+  def handle_event("simulate_qr_login", _, socket) do
+    {:noreply, redirect(socket, to: ~p"/session/login_qr")}
+  end
+
+  def handle_event("simulate_passkey_login", _, socket) do
+    ext_id = Base.url_encode64("demo_passkey_id", padding: false)
+    {:noreply, redirect(socket, to: ~p"/session/login_passkey?external_id=#{ext_id}")}
   end
   # ---------------------------------------------------------------------------
   # Public helpers (called from .heex template)

@@ -334,6 +334,41 @@ end
 IO.puts("  ✓ Flash sale active (2 hours)")
 
 # =============================================================================
+# DEFAULT USERS
+# =============================================================================
+
+alias Qcommerce.Accounts
+alias Qcommerce.Accounts.User
+alias Qcommerce.Accounts.UserPasskey
+
+user =
+  case Repo.get_by(User, email: "customer@qcommerce.com") do
+    nil ->
+      {:ok, user} = Accounts.create_user(%{
+        email: "customer@qcommerce.com",
+        phone: "+9779876543210",
+        full_name: "Amrit Giri",
+        password: "password123",
+        role: :customer
+      })
+      user
+
+    existing ->
+      existing
+  end
+
+IO.puts("  ✓ Default User: #{user.full_name} (#{user.email})")
+
+# Seed a passkey for the user
+unless Repo.get_by(UserPasskey, user_id: user.id) do
+  # Simulating a registered passkey
+  ext_id = Base.url_encode64("demo_passkey_id", padding: false)
+  pub_key = Base.url_encode64("demo_public_key_data", padding: false)
+  Qcommerce.Accounts.PasskeyAuth.register_passkey(user, ext_id, pub_key, "Amrit's iPhone")
+  IO.puts("  ✓ Seeded default Passkey for Amrit")
+end
+
+# =============================================================================
 # DONE
 # =============================================================================
 

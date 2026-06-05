@@ -53,6 +53,9 @@ defmodule QcommerceWeb.Router do
     post "/session/login", SessionController, :login
     post "/session/signup", SessionController, :signup
     post "/session/logout", SessionController, :logout
+    get "/session/login_phone", SessionController, :login_phone
+    get "/session/login_qr", SessionController, :login_qr
+    get "/session/login_passkey", SessionController, :login_passkey
   end
 
 
