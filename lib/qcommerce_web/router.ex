@@ -48,6 +48,11 @@ defmodule QcommerceWeb.Router do
     # get "/", PageController, :home
     live "/", HomeLive, :index
     live "/search", HomeLive, :search
+
+    # Authentication routes (handled by SessionController)
+    post "/session/login", SessionController, :login
+    post "/session/signup", SessionController, :signup
+    post "/session/logout", SessionController, :logout
   end
 
 

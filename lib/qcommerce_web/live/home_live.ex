@@ -8,8 +8,19 @@ defmodule QcommerceWeb.HomeLive do
   @tick_interval 1_000
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(_params, session, socket) do
     if connected?(socket), do: :timer.send_interval(@tick_interval, self(), :tick)
+
+    user_id = session["user_id"]
+    current_user =
+      if user_id do
+        case Qcommerce.Accounts.get_user(user_id) do
+          {:ok, user} -> user
+          _ -> nil
+        end
+      else
+        nil
+      end
 
     slides     = safe_slides()
     categories = safe_categories()
@@ -21,6 +32,9 @@ defmodule QcommerceWeb.HomeLive do
     socket =
       socket
       |> assign(:page_title, "QCommerce — 10 min delivery")
+      |> assign(:current_user, current_user)
+      |> assign(:show_login_modal, false)
+      |> assign(:show_signup_modal, false)
       |> assign(:slides, slides)
       |> assign(:current_slide, 0)
       |> assign(:categories, categories)
@@ -139,6 +153,21 @@ defmodule QcommerceWeb.HomeLive do
     end
   end
 
+  def handle_event("show_login", _, socket) do
+    {:noreply, assign(socket, show_login_modal: true, show_signup_modal: false)}
+  end
+
+  def handle_event("close_login", _, socket) do
+    {:noreply, assign(socket, show_login_modal: false)}
+  end
+
+  def handle_event("show_signup", _, socket) do
+    {:noreply, assign(socket, show_signup_modal: true, show_login_modal: false)}
+  end
+
+  def handle_event("close_signup", _, socket) do
+    {:noreply, assign(socket, show_signup_modal: false)}
+  end
   # ---------------------------------------------------------------------------
   # Public helpers (called from .heex template)
   # ---------------------------------------------------------------------------
