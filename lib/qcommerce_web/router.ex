@@ -41,16 +41,17 @@ defmodule QcommerceWeb.Router do
     plug AuthPlug, roles: [:super_admin]
   end
 
+  # ── Browser / LiveView ──
   scope "/", QcommerceWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    # get "/", PageController, :home
+    live "/", HomeLive, :index
+    live "/search", HomeLive, :search
   end
 
-  # ---------------------------------------------------------------------------
-  # Public API routes — no authentication needed
-  # ---------------------------------------------------------------------------
 
+  # ── Public API ──
   scope "/api/v1", QcommerceWeb.Api.V1, as: :api_v1 do
     pipe_through :api
 
@@ -64,10 +65,7 @@ defmodule QcommerceWeb.Router do
     get "/branches/:branch_id/products/:id", ProductController, :show
   end
 
-  # ---------------------------------------------------------------------------
-  # Authenticated customer API routes
-  # ---------------------------------------------------------------------------
-
+  # ── Authenticated API ──
   scope "/api/v1", QcommerceWeb.Api.V1, as: :api_v1 do
     pipe_through :api_authenticated
 
@@ -77,36 +75,13 @@ defmodule QcommerceWeb.Router do
 
     # Cart validation
     post "/cart/validate", CartController, :validate
-
-    # Orders
     post "/orders", OrderController, :create
     get "/orders", OrderController, :index
     get "/orders/:id", OrderController, :show
     delete "/orders/:id", OrderController, :cancel
   end
 
-  # ---------------------------------------------------------------------------
-  # Branch manager routes — authenticated + branch_manager role
-  # ---------------------------------------------------------------------------
-
-  scope "/api/v1/branch", QcommerceWeb.Api.V1, as: :branch do
-    pipe_through [:api_authenticated, :branch_manager]
-
-    # Branch order management (to be added)
-    # get  "/orders",           BranchOrderController, :index
-    # put  "/orders/:id/confirm", BranchOrderController, :confirm
-    # put  "/orders/:id/deliver", BranchOrderController, :deliver
-
-    # Inventory management (to be added)
-    # get  "/inventory",        InventoryController, :index
-    # put  "/inventory/:id",    InventoryController, :update
-  end
-
-  # ---------------------------------------------------------------------------
-  # Dev routes
-  # ---------------------------------------------------------------------------
-
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # ── Dev tools ──
   if Application.compile_env(:qcommerce, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
@@ -117,7 +92,6 @@ defmodule QcommerceWeb.Router do
 
     scope "/dev" do
       pipe_through :browser
-
       live_dashboard "/dashboard", metrics: QcommerceWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end

@@ -1,3 +1,5 @@
+# lib/qcommerce_web/controllers/page_html.ex
+
 defmodule QcommerceWeb.PageHTML do
   @moduledoc """
   This module contains pages rendered by PageController.

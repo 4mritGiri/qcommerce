@@ -1,3 +1,5 @@
+# lib/qcommerce_web/controllers/page_controller.ex
+
 defmodule QcommerceWeb.PageController do
   use QcommerceWeb, :controller
 

@@ -1,0 +1,458 @@
+<%!-- lib/qcommerce_web/live/home_live.html.heex --%>
+
+<.flash_group flash={@flash} />
+
+<%!-- FLASH SALE TOP BANNER --%>
+<%= if @flash_sale && @flash_countdown != "Expired" do %>
+  <div style="background:var(--accent);color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;letter-spacing:.3px">
+    ⚡ Flash Sale — <%= @flash_sale.discount_pct %>% off &nbsp;·&nbsp;
+    <strong>Ends in <%= @flash_countdown %></strong>
+  </div>
+<% end %>
+
+<%!-- NAVBAR --%>
+<nav class="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">Q</div>
+    <div class="nav-logo-text">Q<span>Commerce</span></div>
+  </a>
+  <div class="nav-location">
+    <span class="nav-location-pin">📍</span>
+    <div class="nav-location-text">
+      <strong>Kathmandu</strong>
+      <span>Thamel, Nepal ▼</span>
+    </div>
+  </div>
+  <div class="nav-search">
+    <form phx-change="search" phx-submit="search" style="width: 100%; position: relative;">
+      <input
+        type="text"
+        name="query"
+        value={@search_query}
+        placeholder='Search for "milk", "eggs", "bread"...'
+        id="searchInput"
+        autocomplete="off"
+        phx-debounce="300"
+      />
+      <span class="nav-search-icon">🔍</span>
+    </form>
+    <%= if length(@search_results) > 0 do %>
+      <div style="position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.1);z-index:300;overflow:hidden">
+        <%= for p <- @search_results do %>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;transition:background .15s"
+               phx-click="show_product" phx-value-product_id={p.id}>
+            <span style="font-size:14px"><%= p.emoji %> <%= p.name %></span>
+            <span style="font-size:13px;font-weight:700;color:var(--green)"><%= Qcommerce.Catalog.Product.format_price(p.base_price) %></span>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  <div class="nav-right">
+    <a href="#" class="nav-btn nav-btn-ghost">Login</a>
+    <a href="#" class="nav-btn nav-btn-primary">Sign up</a>
+    <div class="nav-cart">
+      <span>🛒</span>
+      <span>Cart</span>
+      <span class="nav-cart-count"><%= @cart_count %></span>
+    </div>
+    <div class="nav-menu-btn" id="hamburgerBtn">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<%!-- MOBILE NAV --%>
+<div class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-head">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">Q</div>
+      <div class="nav-logo-text">Q<span style="color:var(--green)">Commerce</span></div>
+    </div>
+    <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+  </div>
+  <a href="/" onclick="closeMobileNav()">Home</a>
+  <a href="#" onclick="closeMobileNav()">Categories</a>
+  <a href="#" onclick="closeMobileNav()">Orders</a>
+  <a href="#" onclick="closeMobileNav()">Profile</a>
+  <a href="#" onclick="closeMobileNav()">Login / Sign up</a>
+</div>
+
+<div class="main">
+
+  <%!-- ── HERO CAROUSEL ── --%>
+  <div class="carousel-wrap">
+    <div class="carousel-dots" id="dots">
+      <%= for {_s, idx} <- Enum.with_index(carousel_slides(@slides)) do %>
+        <div
+          class={"dot #{if idx == @current_slide, do: "active"}"}
+          phx-click="go_slide"
+          phx-value-index={idx}
+        ></div>
+      <% end %>
+    </div>
+    <div class="carousel-viewport">
+      <div class="carousel-track" id="track"
+           style={"transform:translateX(-#{@current_slide * 100}%)"}>
+        <%= for slide <- carousel_slides(@slides) do %>
+          <div class="carousel-slide">
+            <div class={"slide-banner #{slide.theme}"}>
+              <div class="slide-banner-content">
+                <div class="slide-banner-tag">
+                  <span class="slide-banner-tag-dot"></span><%= slide.tag %>
+                </div>
+                <h2><%= raw(slide.h2) %></h2>
+                <p><%= slide.p %></p>
+                <button class="slide-banner-cta"><%= slide.cta %> →</button>
+              </div>
+              <div class="slide-banner-visual">
+                <%= for e <- slide.emoji do %>
+                  <span style="font-size:clamp(32px,6vw,72px);filter:drop-shadow(0 8px 16px rgba(0,0,0,0.3))"><%= e %></span>
+                <% end %>
+              </div>
+            </div>
+            <div class="slide-products">
+              <%= for prod <- slide.products do %>
+                <div class="prod-chip"
+                     phx-click="add_to_cart"
+                     phx-value-product_id={prod.id}
+                     phx-value-price={prod.price}>
+                  <div class="prod-chip-img">
+                    <%= if prod.badge do %>
+                      <div class={"prod-chip-badge#{if prod.badge == "SALE", do: " sale"}"}><%= prod.badge %></div>
+                    <% end %>
+                    <%= prod.emoji %>
+                    <button class="prod-chip-add">+</button>
+                  </div>
+                  <h4><%= prod.name %></h4>
+                  <div class="prod-chip-meta">
+                    <div class="prod-chip-time">⚡ <%= prod.time %></div>
+                    <div class="prod-chip-price"><%= prod.price %></div>
+                  </div>
+                </div>
+              <% end %>
+              <div class="prod-chip-see-more"><span>→</span><span>See More</span></div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <button class="carousel-btn carousel-btn-prev" phx-click="prev_slide">‹</button>
+    <button class="carousel-btn carousel-btn-next" phx-click="next_slide">›</button>
+  </div>
+
+  <%!-- ── OFFERS STRIP ── --%>
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🎁 Offers &amp; Deals</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="offers-strip">
+      <div class="offer-card" phx-click="apply_coupon" phx-value-code="FIRST10">
+        <div class="offer-icon" style="background:#e8f5e9">🆓</div>
+        <div class="offer-body">
+          <h4>Free delivery on first order</h4>
+          <p>Use code <strong>FIRST10</strong> at checkout</p>
+          <div class="offer-tag" style="background:#e8f5e9;color:var(--green)">AUTO APPLIED</div>
+        </div>
+      </div>
+      <div class="offer-card" phx-click="apply_coupon" phx-value-code="DAIRY20">
+        <div class="offer-icon" style="background:#fce4ec">💰</div>
+        <div class="offer-body">
+          <h4>20% off on Dairy products</h4>
+          <p>Valid on orders above Rs. 200</p>
+          <div class="offer-tag" style="background:#fce4ec;color:#e91e63">DAIRY20</div>
+        </div>
+      </div>
+      <%= if @flash_sale do %>
+        <div class="offer-card">
+          <div class="offer-icon" style="background:#fff3e0">⚡</div>
+          <div class="offer-body">
+            <h4>Flash Sale — Snacks &amp; Drinks</h4>
+            <p>Up to <%= @flash_sale.discount_pct %>% off</p>
+            <div class="offer-tag" style="background:#fff3e0;color:var(--accent)"><%= @flash_countdown %> left</div>
+          </div>
+        </div>
+      <% else %>
+        <div class="offer-card">
+          <div class="offer-icon" style="background:#fff3e0">⚡</div>
+          <div class="offer-body">
+            <h4>Flash Sale — Snacks &amp; Drinks</h4>
+            <p>Up to 30% off, ends midnight</p>
+            <div class="offer-tag" style="background:#fff3e0;color:var(--accent)">2h 14m left</div>
+          </div>
+        </div>
+      <% end %>
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#ede7f6">🎯</div>
+        <div class="offer-body">
+          <h4>Buy 2 Get 1 Free — Fruits</h4>
+          <p>Fresh seasonal fruits only</p>
+          <div class="offer-tag" style="background:#ede7f6;color:#673ab7">B2G1</div>
+        </div>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#e3f2fd">🚀</div>
+        <div class="offer-body">
+          <h4>10 min delivery — Guaranteed</h4>
+          <p>Or your next delivery is free</p>
+          <div class="offer-tag" style="background:#e3f2fd;color:#1565c0">PROMISE</div>
+        </div>
+      </div>
+    </div>
+
+    <%!-- Coupon row --%>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <form phx-submit="apply_coupon" style="display:flex;gap:8px;align-items:center">
+        <input type="text" name="code" placeholder="Enter coupon code" value={@coupon_code}
+          style="height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-family:var(--font-body);font-size:13px;outline:none;width:200px"/>
+        <button type="submit" class="nav-btn nav-btn-primary" style="height:36px">Apply</button>
+      </form>
+      <%= if @coupon_error do %>
+        <span style="font-size:12px;color:#e91e63;font-weight:600">✗ <%= @coupon_error %></span>
+      <% end %>
+      <%= if @coupon_discount do %>
+        <span style="font-size:12px;color:var(--green);font-weight:600">✓ <%= @coupon_discount.label %> applied!</span>
+      <% end %>
+    </div>
+  </section>
+
+  <%!-- ── CATEGORIES ── --%>
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🛍️ Shop by category</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="cats-row">
+      <%= for cat <- category_list(@categories) do %>
+        <div class="cat-item">
+          <div class="cat-icon"><%= cat.emoji %></div>
+          <div class="cat-name"><%= cat.name %></div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <%!-- ── POPULAR NOW ── --%>
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🔥 Popular now</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="products-row">
+      <%= for p <- product_display_list(@popular_products, popular_fallback()) do %>
+        <div class="prod-card"
+             phx-click="add_to_cart"
+             phx-value-product_id={p.id}
+             phx-value-price={p.price_raw}>
+          <div class="prod-card-img">
+            <%= if p.badge do %>
+              <div class={"prod-card-badge #{p.badge}"}><%= p.badge_label %></div>
+            <% end %>
+            <%= p.emoji %>
+            <button class={"prod-card-add#{if Map.get(@cart_items, p.id, %{qty: 0}).qty > 0, do: " added"}"}
+              phx-click="add_to_cart"
+              phx-value-product_id={p.id}
+              phx-value-price={p.price_raw}>
+              <%= if Map.get(@cart_items, p.id, %{qty: 0}).qty > 0, do: "✓", else: "+" %>
+            </button>
+          </div>
+          <div class="prod-card-body">
+            <div class="prod-card-name"><%= p.name %></div>
+            <div class="prod-card-info">
+              <div class="prod-card-time">⚡ <%= p.time %></div>
+              <div class="prod-card-weight"><%= p.weight %></div>
+            </div>
+            <div class="prod-card-price">
+              <strong><%= p.price %></strong>
+              <%= if p.old_price do %>
+                <del><%= p.old_price %></del>
+                <span class="disc"><%= p.discount_pct %>% off</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <%!-- ── APP BANNER ── --%>
+  <div class="app-banner">
+    <div class="app-banner-text">
+      <h3>Get anything in <em style="color:#4ade80">10 minutes</em> 🚀</h3>
+      <p>Download the app for <strong>exclusive deals</strong> and live rider tracking</p>
+    </div>
+    <div class="app-btns">
+      <a href="#" class="app-btn">
+        <span class="app-btn-icon">🍎</span>
+        <div class="app-btn-text"><span>Download on the</span><span>App Store</span></div>
+      </a>
+      <a href="#" class="app-btn">
+        <span class="app-btn-icon">▶</span>
+        <div class="app-btn-text"><span>Get it on</span><span>Google Play</span></div>
+      </a>
+    </div>
+    <div class="app-banner-emoji">📱🛵</div>
+  </div>
+
+  <%!-- ── FRESH FRUITS & VEGETABLES ── --%>
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🥬 Fresh Fruits &amp; Vegetables</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="products-row">
+      <%= for p <- product_display_list(@fresh_products, fresh_fallback()) do %>
+        <div class="prod-card"
+             phx-click="add_to_cart"
+             phx-value-product_id={p.id}
+             phx-value-price={p.price_raw}>
+          <div class="prod-card-img">
+            <%= if p.badge do %>
+              <div class={"prod-card-badge #{p.badge}"}><%= p.badge_label %></div>
+            <% end %>
+            <%= p.emoji %>
+            <button class="prod-card-add"
+              phx-click="add_to_cart"
+              phx-value-product_id={p.id}
+              phx-value-price={p.price_raw}>+</button>
+          </div>
+          <div class="prod-card-body">
+            <div class="prod-card-name"><%= p.name %></div>
+            <div class="prod-card-info">
+              <div class="prod-card-time">⚡ <%= p.time %></div>
+              <div class="prod-card-weight"><%= p.weight %></div>
+            </div>
+            <div class="prod-card-price">
+              <strong><%= p.price %></strong>
+              <%= if p.old_price do %>
+                <del><%= p.old_price %></del>
+                <span class="disc"><%= p.discount_pct %>% off</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <%!-- ── DAIRY & EGGS ── --%>
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🥛 Dairy &amp; Eggs</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="products-row">
+      <%= for p <- product_display_list(@dairy_products, dairy_fallback()) do %>
+        <div class="prod-card"
+             phx-click="add_to_cart"
+             phx-value-product_id={p.id}
+             phx-value-price={p.price_raw}>
+          <div class="prod-card-img">
+            <%= if p.badge do %>
+              <div class={"prod-card-badge #{p.badge}"}><%= p.badge_label %></div>
+            <% end %>
+            <%= p.emoji %>
+            <button class="prod-card-add"
+              phx-click="add_to_cart"
+              phx-value-product_id={p.id}
+              phx-value-price={p.price_raw}>+</button>
+          </div>
+          <div class="prod-card-body">
+            <div class="prod-card-name"><%= p.name %></div>
+            <div class="prod-card-info">
+              <div class="prod-card-time">⚡ <%= p.time %></div>
+              <div class="prod-card-weight"><%= p.weight %></div>
+            </div>
+            <div class="prod-card-price">
+              <strong><%= p.price %></strong>
+              <%= if p.old_price do %>
+                <del><%= p.old_price %></del>
+                <span class="disc"><%= p.discount_pct %>% off</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+</div><%!-- .main --%>
+
+<%!-- FOOTER --%>
+<footer>
+  <div class="footer-inner">
+    <div class="footer-copy">© 2025 QCommerce · Delivered in 10 minutes</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Help</a>
+      <a href="#">Careers</a>
+    </div>
+  </div>
+</footer>
+
+<%!-- CART BAR (visible when cart_count > 0) --%>
+<%= if @cart_count > 0 do %>
+  <div class="cart-bar visible">
+    <div class="cart-bar-left">
+      <div class="cart-bar-count"><%= @cart_count %> item<%= if @cart_count > 1, do: "s" %></div>
+      <div class="cart-bar-title">View cart</div>
+    </div>
+    <div class="cart-bar-total">Rs. <%= Decimal.round(@cart_total, 0) %></div>
+    <button class="cart-bar-btn">Checkout →</button>
+  </div>
+<% end %>
+
+<%!-- PRODUCT MODAL --%>
+<%= if @show_modal && @selected_product do %>
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;display:flex;align-items:flex-end;justify-content:center"
+       phx-click="close_modal">
+    <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 24px 36px;position:relative"
+         phx-click-away="close_modal">
+      <button phx-click="close_modal"
+        style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+      <div style="font-size:72px;text-align:center;margin-bottom:12px"><%= @selected_product.emoji %></div>
+      <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px"><%= @selected_product.name %></h3>
+      <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">
+        <%= @selected_product.description || "Fresh and quality assured. Delivered in 10 minutes." %>
+      </p>
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <span style="font-size:11px;background:var(--green-light);color:var(--green);padding:4px 10px;border-radius:6px;font-weight:600">⚡ 10 min delivery</span>
+        <span style="font-size:11px;background:#f0f0f8;color:var(--text2);padding:4px 10px;border-radius:6px;font-weight:600"><%= @selected_product.unit %></span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <%= if @selected_product.old_price do %>
+            <del style="font-size:13px;color:var(--text3)"><%= Qcommerce.Catalog.Product.format_price(@selected_product.old_price) %></del>
+          <% end %>
+          <div style="font-size:22px;font-weight:800;color:var(--text)"><%= Qcommerce.Catalog.Product.format_price(@selected_product.base_price) %></div>
+        </div>
+        <button class="nav-btn nav-btn-primary" style="height:44px;font-size:14px;padding:0 24px"
+          phx-click="add_to_cart"
+          phx-value-product_id={@selected_product.id}
+          phx-value-price={@selected_product.base_price}>
+          + Add to cart
+        </button>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<%!-- MOBILE NAV JS --%>
+<script>
+  function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
+  function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
+  document.getElementById('hamburgerBtn')?.addEventListener('click', openMobileNav);
+
+  // Touch swipe on carousel
+  let touchX=0;
+  document.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX},{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-touchX;
+    if(Math.abs(dx)>50){
+      if(dx<0) document.querySelector('[phx-click="next_slide"]')?.click();
+      else document.querySelector('[phx-click="prev_slide"]')?.click();
+    }
+  },{passive:true});
+</script>

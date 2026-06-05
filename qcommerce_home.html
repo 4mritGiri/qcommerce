@@ -1,10 +1,13 @@
-/* assets/css/app.css */
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
-
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCommerce — 10 Min Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --green:#0c831f;
@@ -228,3 +231,459 @@ footer{background:#fff;border-top:1px solid var(--border);padding:24px clamp(12p
 .cart-bar-title{font-size:14px;font-weight:700}
 .cart-bar-total{font-size:14px;font-weight:800}
 .cart-bar-btn{background:#fff;color:var(--green);border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body);display:flex;align-items:center;gap:5px}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="nav">
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">Q</div>
+    <div class="nav-logo-text">Q<span>Commerce</span></div>
+  </a>
+  <div class="nav-location" onclick="alert('Set delivery location')">
+    <span class="nav-location-pin">📍</span>
+    <div class="nav-location-text">
+      <strong>Kathmandu</strong>
+      <span>Thamel, Nepal ▼</span>
+    </div>
+  </div>
+  <div class="nav-search">
+    <input type="text" placeholder='Search for "milk", "eggs", "bread"...' id="searchInput" oninput="handleSearch(this.value)">
+    <span class="nav-search-icon">🔍</span>
+  </div>
+  <div class="nav-right">
+    <a href="#" class="nav-btn nav-btn-ghost">Login</a>
+    <a href="#" class="nav-btn nav-btn-primary">Sign up</a>
+    <div class="nav-cart" id="cartBtn">
+      <span>🛒</span>
+      <span>Cart</span>
+      <span class="nav-cart-count" id="cartCount">0</span>
+    </div>
+    <div class="nav-menu-btn" onclick="openMobileNav()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-head">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">Q</div>
+      <div class="nav-logo-text">Q<span style="color:var(--green)">Commerce</span></div>
+    </div>
+    <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+  </div>
+  <a href="#" onclick="closeMobileNav()">Home</a>
+  <a href="#" onclick="closeMobileNav()">Categories</a>
+  <a href="#" onclick="closeMobileNav()">Orders</a>
+  <a href="#" onclick="closeMobileNav()">Profile</a>
+  <a href="#" onclick="closeMobileNav()">Login / Sign up</a>
+</div>
+
+<div class="main">
+
+  <!-- ── HERO CAROUSEL ── -->
+  <div class="carousel-wrap">
+    <div class="carousel-dots" id="dots"></div>
+    <div class="carousel-viewport">
+      <div class="carousel-track" id="track"></div>
+    </div>
+    <button class="carousel-btn carousel-btn-prev" onclick="prevSlide()">‹</button>
+    <button class="carousel-btn carousel-btn-next" onclick="nextSlide()">›</button>
+  </div>
+
+  <!-- ── OFFERS STRIP ── -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🎁 Offers & Deals</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="offers-strip">
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#e8f5e9">🆓</div>
+        <div class="offer-body">
+          <h4>Free delivery on first order</h4>
+          <p>Use code <strong>FIRST10</strong> at checkout</p>
+          <div class="offer-tag" style="background:#e8f5e9;color:var(--green)">AUTO APPLIED</div>
+        </div>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#fce4ec">💰</div>
+        <div class="offer-body">
+          <h4>20% off on Dairy products</h4>
+          <p>Valid on orders above ₹200</p>
+          <div class="offer-tag" style="background:#fce4ec;color:#e91e63">DAIRY20</div>
+        </div>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#fff3e0">⚡</div>
+        <div class="offer-body">
+          <h4>Flash Sale — Snacks & Drinks</h4>
+          <p>Up to 30% off, ends midnight</p>
+          <div class="offer-tag" style="background:#fff3e0;color:var(--accent)">2h 14m left</div>
+        </div>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#ede7f6">🎯</div>
+        <div class="offer-body">
+          <h4>Buy 2 Get 1 Free — Fruits</h4>
+          <p>Fresh seasonal fruits only</p>
+          <div class="offer-tag" style="background:#ede7f6;color:#673ab7">B2G1</div>
+        </div>
+      </div>
+      <div class="offer-card">
+        <div class="offer-icon" style="background:#e3f2fd">🚀</div>
+        <div class="offer-body">
+          <h4>10 min delivery — Guaranteed</h4>
+          <p>Or your next delivery is free</p>
+          <div class="offer-tag" style="background:#e3f2fd;color:#1565c0">PROMISE</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CATEGORIES ── -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🛍️ Shop by category</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="cats-row" id="catsRow"></div>
+  </section>
+
+  <!-- ── POPULAR NOW ── -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🔥 Popular now</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="products-row" id="popularGrid"></div>
+  </section>
+
+  <!-- ── APP BANNER ── -->
+  <div class="app-banner">
+    <div class="app-banner-text">
+      <h3>Get anything in <em style="color:#4ade80">10 minutes</em> 🚀</h3>
+      <p>Download the app for <strong>exclusive deals</strong> and live rider tracking</p>
+    </div>
+    <div class="app-btns">
+      <a href="#" class="app-btn">
+        <span class="app-btn-icon">🍎</span>
+        <div class="app-btn-text"><span>Download on the</span><span>App Store</span></div>
+      </a>
+      <a href="#" class="app-btn">
+        <span class="app-btn-icon">▶</span>
+        <div class="app-btn-text"><span>Get it on</span><span>Google Play</span></div>
+      </a>
+    </div>
+    <div class="app-banner-emoji">📱🛵</div>
+  </div>
+
+  <!-- ── FRESH PRODUCE ── -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🥬 Fresh Fruits & Vegetables</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="products-row" id="freshGrid"></div>
+  </section>
+
+  <!-- ── DAIRY ── -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title">🥛 Dairy & Eggs</div>
+      <a href="#" class="section-see-all">See all →</a>
+    </div>
+    <div class="products-row" id="dairyGrid"></div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-copy">© 2025 QCommerce · Delivered in 10 minutes</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Help</a>
+      <a href="#">Careers</a>
+    </div>
+  </div>
+</footer>
+
+<!-- Cart bar (mobile) -->
+<div class="cart-bar" id="cartBar">
+  <div class="cart-bar-left">
+    <div class="cart-bar-count" id="cartBarCount">0 items</div>
+    <div class="cart-bar-title">View cart</div>
+  </div>
+  <div class="cart-bar-total" id="cartBarTotal">₹0</div>
+  <button class="cart-bar-btn">View ›</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SLIDES = [
+  {
+    theme:'slide-0',
+    tag:'⚡ 10 Min Delivery',
+    h2:'Freshness at <em>lightning speed</em>',
+    p:'5,000+ products · zero waiting',
+    cta:'Shop now',
+    emoji:['🛒','🥦','🍎'],
+    products:[
+      {e:'🥑',name:'Organic Avocado Pack of 3',time:'10 mins',price:'₹89',old:'₹120',badge:'NEW',w:'Pack of 3'},
+      {e:'🫐',name:'Fresh Blueberries 125g',time:'10 mins',price:'₹149',badge:'FRESH',w:'125g'},
+      {e:'🥝',name:'Kiwi Fruit 4pcs',time:'10 mins',price:'₹79',old:'₹99',badge:'SALE',w:'4pcs'},
+      {e:'🍓',name:'Strawberries 250g',time:'10 mins',price:'₹119',w:'250g'},
+      {e:'🥭',name:'Alphonso Mango 500g',time:'10 mins',price:'₹189',badge:'HOT',w:'500g'},
+    ]
+  },
+  {
+    theme:'slide-1',
+    tag:'🥛 Dairy Fresh',
+    h2:'Farm fresh <em>dairy</em> every morning',
+    p:'Delivered cold · certified organic',
+    cta:'Explore dairy',
+    emoji:['🥛','🧀','🥚'],
+    products:[
+      {e:'🥛',name:'Farm Fresh Full Cream Milk 500ml',time:'10 mins',price:'₹32',w:'500ml'},
+      {e:'🧀',name:'Amul Processed Cheese 200g',time:'10 mins',price:'₹89',w:'200g'},
+      {e:'🥚',name:'Free Range Eggs Tray of 12',time:'10 mins',price:'₹95',old:'₹110',badge:'SALE',w:'12pcs'},
+      {e:'🧈',name:'Amul Butter 100g',time:'10 mins',price:'₹55',w:'100g'},
+      {e:'🍦',name:'Greek Yogurt 400g',time:'10 mins',price:'₹79',badge:'NEW',w:'400g'},
+    ]
+  },
+  {
+    theme:'slide-2',
+    tag:'🍫 Snacks & Munchies',
+    h2:'Late night <em>cravings</em> sorted',
+    p:'Chocolates, chips & more · 1000+ options',
+    cta:'Shop snacks',
+    emoji:['🍫','🍿','🧃'],
+    products:[
+      {e:'🍫',name:'Dairy Milk Silk 160g',time:'10 mins',price:'₹139',w:'160g'},
+      {e:'🍿',name:'Act II Popcorn Butter 30g',time:'10 mins',price:'₹25',badge:'HOT',w:'30g'},
+      {e:'🥨',name:'Pringles Original 107g',time:'10 mins',price:'₹179',w:'107g'},
+      {e:'🧃',name:'Real Fruit Mango 1L',time:'10 mins',price:'₹75',old:'₹90',badge:'SALE',w:'1L'},
+      {e:'🍬',name:'Haribo Goldbears 200g',time:'10 mins',price:'₹149',badge:'NEW',w:'200g'},
+    ]
+  },
+  {
+    theme:'slide-3',
+    tag:'🥩 Meat & Seafood',
+    h2:'Premium <em>proteins</em> delivered fresh',
+    p:'Sourced daily · hygiene certified',
+    cta:'Shop meat',
+    emoji:['🥩','🐟','🍗'],
+    products:[
+      {e:'🍗',name:'Chicken Breast 500g boneless',time:'10 mins',price:'₹259',badge:'FRESH',w:'500g'},
+      {e:'🥩',name:'Mutton Boneless 250g',time:'10 mins',price:'₹349',w:'250g'},
+      {e:'🐟',name:'Salmon Fillet 200g',time:'10 mins',price:'₹449',badge:'HOT',w:'200g'},
+      {e:'🦐',name:'Tiger Prawns 250g cleaned',time:'10 mins',price:'₹299',w:'250g'},
+      {e:'🥚',name:'Quail Eggs pack of 20',time:'10 mins',price:'₹89',badge:'NEW',w:'20pcs'},
+    ]
+  },
+  {
+    theme:'slide-4',
+    tag:'🧹 Home Essentials',
+    h2:'Clean home, <em>happy life</em>',
+    p:'Cleaning, personal care & baby products',
+    cta:'Explore now',
+    emoji:['🧴','🧹','🪥'],
+    products:[
+      {e:'🧴',name:'Dettol Hand Sanitizer 500ml',time:'10 mins',price:'₹185',w:'500ml'},
+      {e:'🧹',name:'Scotch Brite Scrub Pad 3pcs',time:'10 mins',price:'₹49',badge:'HOT',w:'3pcs'},
+      {e:'🪥',name:'Colgate MaxFresh Toothpaste 150g',time:'10 mins',price:'₹79',old:'₹95',badge:'SALE',w:'150g'},
+      {e:'🧼',name:'Dove Beauty Bar Soap 100g',time:'10 mins',price:'₹55',w:'100g'},
+      {e:'🪒',name:'Gillette Fusion 5 Razor 1pc',time:'10 mins',price:'₹299',badge:'NEW',w:'1pc'},
+    ]
+  }
+];
+
+const CATEGORIES = [
+  {e:'🥬',name:'Vegetables'},{e:'🍎',name:'Fruits'},{e:'🥛',name:'Dairy'},
+  {e:'🍞',name:'Bakery'},{e:'🥩',name:'Meat'},{e:'🧃',name:'Beverages'},
+  {e:'🍫',name:'Snacks'},{e:'🧴',name:'Beauty'},{e:'🧹',name:'Cleaning'},
+  {e:'👶',name:'Baby'},{e:'🐾',name:'Pet Care'},{e:'❄️',name:'Frozen'},
+  {e:'🍳',name:'Breakfast'},{e:'🌿',name:'Organic'},{e:'💊',name:'Health'},
+];
+
+const POPULAR = [
+  {e:'🥛',name:'Farm Fresh Milk 500ml',badge:'badge-new',b:'NEW',price:'₹32',time:'10 mins',w:'500ml'},
+  {e:'🍞',name:'Whole Wheat Bread 400g',badge:'badge-popular',b:'POPULAR',price:'₹45',time:'10 mins',w:'400g'},
+  {e:'🥚',name:'Free Range Eggs 12pcs',badge:'badge-sale',b:'SALE',price:'₹95',old:'₹110',time:'10 mins',w:'12pcs'},
+  {e:'🍌',name:'Bananas 6pcs Robusta',price:'₹39',time:'10 mins',w:'6pcs'},
+  {e:'🍅',name:'Cherry Tomatoes 250g',badge:'badge-hot',b:'HOT',price:'₹79',time:'10 mins',w:'250g'},
+  {e:'🥑',name:'Ripe Avocados 2pcs',badge:'badge-new',b:'NEW',price:'₹89',old:'₹120',time:'10 mins',w:'2pcs'},
+  {e:'🧅',name:'Red Onions 1kg',price:'₹29',time:'10 mins',w:'1kg'},
+];
+
+const FRESH = [
+  {e:'🥦',name:'Broccoli Fresh 350g',badge:'badge-new',b:'NEW',price:'₹69',time:'10 mins',w:'350g'},
+  {e:'🥕',name:'Carrots Organic 500g',price:'₹45',time:'10 mins',w:'500g'},
+  {e:'🌽',name:'Sweet Corn 2pcs',badge:'badge-hot',b:'HOT',price:'₹35',time:'10 mins',w:'2pcs'},
+  {e:'🫑',name:'Bell Peppers Mixed 3pcs',price:'₹89',old:'₹110',time:'10 mins',w:'3pcs'},
+  {e:'🍋',name:'Lemon 6pcs',price:'₹29',time:'10 mins',w:'6pcs'},
+  {e:'🫐',name:'Blueberries 125g',badge:'badge-sale',b:'SALE',price:'₹149',old:'₹189',time:'10 mins',w:'125g'},
+  {e:'🍇',name:'Black Grapes Seedless 500g',price:'₹99',time:'10 mins',w:'500g'},
+];
+
+const DAIRY = [
+  {e:'🧀',name:'Amul Cheddar Cheese 200g',badge:'badge-popular',b:'POPULAR',price:'₹89',time:'10 mins',w:'200g'},
+  {e:'🍦',name:'Amul Greek Yogurt 400g',price:'₹79',time:'10 mins',w:'400g'},
+  {e:'🧈',name:'Amul Butter Unsalted 500g',price:'₹239',time:'10 mins',w:'500g'},
+  {e:'🥛',name:'Oat Milk Unsweetened 1L',badge:'badge-new',b:'NEW',price:'₹139',time:'10 mins',w:'1L'},
+  {e:'🧆',name:'Paneer Fresh 200g',badge:'badge-hot',b:'HOT',price:'₹69',time:'10 mins',w:'200g'},
+  {e:'🫙',name:'Mishti Doi 400g',price:'₹89',time:'10 mins',w:'400g'},
+  {e:'🥚',name:'Quail Eggs 20pcs',badge:'badge-sale',b:'SALE',price:'₹89',old:'₹109',time:'10 mins',w:'20pcs'},
+];
+
+// State
+let currentSlide = 0;
+let cartItems = 0;
+let cartTotal = 0;
+let autoTimer;
+
+// Build carousel
+function buildCarousel(){
+  const track = document.getElementById('track');
+  const dots = document.getElementById('dots');
+  track.innerHTML='';
+  dots.innerHTML='';
+  SLIDES.forEach((s,i)=>{
+    // products HTML
+    let prods = s.products.map(p=>`
+      <div class="prod-chip" onclick="addToCart(event,this,'${p.name}','${p.price}')">
+        <div class="prod-chip-img">
+          ${p.badge?`<div class="prod-chip-badge${p.badge==='SALE'?' sale':''}">${p.badge}</div>`:''}
+          ${p.e}
+          <button class="prod-chip-add">+</button>
+        </div>
+        <h4>${p.name}</h4>
+        <div class="prod-chip-meta">
+          <div class="prod-chip-time">⚡ ${p.time}</div>
+          <div class="prod-chip-price">${p.price}</div>
+        </div>
+      </div>
+    `).join('');
+    prods += `<div class="prod-chip-see-more"><span>→</span><span>See More</span></div>`;
+
+    track.innerHTML += `
+      <div class="carousel-slide">
+        <div class="slide-banner ${s.theme}">
+          <div class="slide-banner-content">
+            <div class="slide-banner-tag"><span class="slide-banner-tag-dot"></span>${s.tag}</div>
+            <h2>${s.h2}</h2>
+            <p>${s.p}</p>
+            <button class="slide-banner-cta">${s.cta} →</button>
+          </div>
+          <div class="slide-banner-visual">${s.emoji.map(e=>`<span style="font-size:clamp(32px,6vw,72px);filter:drop-shadow(0 8px 16px rgba(0,0,0,0.3))">${e}</span>`).join('')}</div>
+        </div>
+        <div class="slide-products">${prods}</div>
+      </div>`;
+
+    const dot = document.createElement('div');
+    dot.className = 'dot'+(i===0?' active':'');
+    dot.onclick=()=>goTo(i);
+    dots.appendChild(dot);
+  });
+}
+
+function updateCarousel(){
+  document.getElementById('track').style.transform=`translateX(-${currentSlide*100}%)`;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===currentSlide));
+}
+function goTo(n){currentSlide=(n+SLIDES.length)%SLIDES.length;updateCarousel();resetTimer()}
+function nextSlide(){goTo(currentSlide+1)}
+function prevSlide(){goTo(currentSlide-1)}
+function resetTimer(){clearInterval(autoTimer);autoTimer=setInterval(nextSlide,4500)}
+
+// Build categories
+function buildCategories(){
+  const row = document.getElementById('catsRow');
+  CATEGORIES.forEach(c=>{
+    row.innerHTML+=`<div class="cat-item" onclick="showToast('Browsing ${c.name}')">
+      <div class="cat-icon">${c.e}</div>
+      <div class="cat-name">${c.name}</div>
+    </div>`;
+  });
+}
+
+// Build product grid
+function buildGrid(id, data){
+  const el = document.getElementById(id);
+  el.innerHTML = data.map(p=>`
+    <div class="prod-card" onclick="addToCart(event,this,'${p.name}','${p.price}')">
+      <div class="prod-card-img">
+        ${p.badge?`<div class="prod-card-badge ${p.badge}">${p.b}</div>`:''}
+        ${p.e}
+        <button class="prod-card-add" onclick="addToCart(event,this.parentElement.parentElement,this.parentElement.parentElement.dataset.name,'${p.price}')">+</button>
+      </div>
+      <div class="prod-card-body">
+        <div class="prod-card-name">${p.name}</div>
+        <div class="prod-card-info">
+          <div class="prod-card-time">⚡ ${p.time}</div>
+          <div class="prod-card-weight">${p.w}</div>
+        </div>
+        <div class="prod-card-price">
+          <strong>${p.price}</strong>
+          ${p.old?`<del>${p.old}</del>`:''}
+          ${p.old?`<span class="disc">${Math.round((1-parseInt(p.price.replace('₹',''))/parseInt(p.old.replace('₹','')))*100)}% off</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// Add to cart
+function addToCart(e, cardEl, name, priceStr){
+  e.stopPropagation();
+  const price = parseInt(priceStr.replace(/[^0-9]/g,''));
+  cartItems++;
+  cartTotal+=price;
+  document.getElementById('cartCount').textContent=cartItems;
+  document.getElementById('cartBarCount').textContent=cartItems+' item'+(cartItems>1?'s':'');
+  document.getElementById('cartBarTotal').textContent='₹'+cartTotal;
+  document.getElementById('cartBar').classList.add('visible');
+  // Mark add buttons
+  const addBtns = cardEl.querySelectorAll('.prod-card-add,.prod-chip-add');
+  addBtns.forEach(b=>{b.textContent='✓';b.classList.add('added')});
+  setTimeout(()=>addBtns.forEach(b=>{b.textContent='+';b.classList.remove('added')}),900);
+  showToast(name.substring(0,30)+'... added to cart');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// Search
+function handleSearch(val){if(val.length>2)showToast('Searching for "'+val+'"...')}
+
+// Mobile nav
+function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
+function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
+
+// Touch swipe on carousel
+let touchX=0;
+document.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(dx)>50){dx<0?nextSlide():prevSlide()}
+},{passive:true});
+
+// Init
+buildCarousel();
+buildCategories();
+buildGrid('popularGrid',POPULAR);
+buildGrid('freshGrid',FRESH);
+buildGrid('dairyGrid',DAIRY);
+resetTimer();
+</script>
+</body>
+</html>
