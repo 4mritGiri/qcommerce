@@ -58,6 +58,11 @@ defmodule QcommerceWeb.Router do
     get "/session/login_passkey", SessionController, :login_passkey
   end
 
+  scope "/admin", QcommerceWeb.Admin do
+    pipe_through :browser
+    live "/settings", SettingsLive, :index
+  end
+
 
   # ── Public API ──
   scope "/api/v1", QcommerceWeb.Api.V1, as: :api_v1 do

@@ -24,7 +24,14 @@ defmodule Qcommerce.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Qcommerce.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        Qcommerce.Settings.ensure_cache()
+        {:ok, pid}
+      other ->
+        other
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

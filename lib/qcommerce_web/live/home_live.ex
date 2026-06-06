@@ -4,6 +4,7 @@ defmodule QcommerceWeb.HomeLive do
 
   alias Qcommerce.Catalog
   alias Qcommerce.Catalog.{Product, FlashSale}
+  alias Qcommerce.Settings
 
   @tick_interval 1_000
 
@@ -28,6 +29,17 @@ defmodule QcommerceWeb.HomeLive do
     fresh      = safe_products("vegetables", 7)
     dairy      = safe_products("dairy", 7)
     flash_sale = safe_flash_sale()
+    auth       = Qcommerce.Settings.auth_methods()
+
+    # Default to first enabled tab
+    default_tab =
+      cond do
+        auth.qr      -> :qr
+        auth.phone   -> :phone
+        auth.email   -> :email
+        auth.passkey -> :passkey
+        true         -> :email
+      end
 
     socket =
       socket
@@ -35,7 +47,8 @@ defmodule QcommerceWeb.HomeLive do
       |> assign(:current_user, current_user)
       |> assign(:show_login_modal, false)
       |> assign(:show_signup_modal, false)
-      |> assign(:login_tab, :qr)
+      |> assign(:auth_methods, auth)
+      |> assign(:login_tab, default_tab)
       |> assign(:qr_countdown, 60)
       |> assign(:login_phone_step, 1)
       |> assign(:phone_input, "")
@@ -171,10 +184,22 @@ defmodule QcommerceWeb.HomeLive do
   end
 
   def handle_event("show_login", _, socket) do
+    # Always read fresh from ETS so admin toggles are reflected instantly
+    auth = Settings.auth_methods()
+    default_tab =
+      cond do
+        auth.qr      -> :qr
+        auth.phone   -> :phone
+        auth.email   -> :email
+        auth.passkey -> :passkey
+        true         -> :email
+      end
+
     {:noreply, assign(socket,
       show_login_modal: true,
       show_signup_modal: false,
-      login_tab: :qr,
+      auth_methods: auth,
+      login_tab: default_tab,
       qr_countdown: 60,
       login_phone_step: 1,
       phone_input: "",
@@ -195,13 +220,15 @@ defmodule QcommerceWeb.HomeLive do
   end
 
   def handle_event("select_login_tab", %{"tab" => tab}, socket) do
+    auth = socket.assigns.auth_methods
     tab_atom =
       case tab do
-        "qr"      -> :qr
-        "phone"   -> :phone
-        "email"   -> :email
-        "passkey" -> :passkey
-        _         -> :qr
+        "qr"      when auth.qr      -> :qr
+        "phone"   when auth.phone   -> :phone
+        "email"   when auth.email   -> :email
+        "passkey" when auth.passkey -> :passkey
+        # fallback: keep current tab if requested tab is disabled
+        _         -> socket.assigns.login_tab
       end
     {:noreply, assign(socket, login_tab: tab_atom, login_phone_step: 1, otp_error: nil)}
   end

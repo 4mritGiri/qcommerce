@@ -369,6 +369,37 @@ unless Repo.get_by(UserPasskey, user_id: user.id) do
 end
 
 # =============================================================================
+# SYSTEM SETTINGS
+# =============================================================================
+
+Qcommerce.Settings.seed_defaults()
+IO.puts("  ✓ System settings seeded (auth: email=on, phone/qr/passkey=off)")
+
+# =============================================================================
+# ADMIN USER
+# =============================================================================
+
+alias Qcommerce.Accounts.User, as: UserSchema
+
+admin =
+  case Repo.get_by(UserSchema, email: "admin@qcommerce.com") do
+    nil ->
+      {:ok, a} = Qcommerce.Accounts.create_user(%{
+        email: "admin@qcommerce.com",
+        phone: "+9779800000000",
+        full_name: "QCommerce Admin",
+        password: "admin123456",
+        role: :super_admin
+      })
+      a
+
+    existing ->
+      existing
+  end
+
+IO.puts("  ✓ Admin User: #{admin.email} (role: #{admin.role})")
+
+# =============================================================================
 # DONE
 # =============================================================================
 
@@ -378,5 +409,8 @@ IO.puts("""
    Branch:   #{branch.name}
    Products: #{map_size(prods)}
    Slides:   #{length(slides_data)}
+   Admin:    admin@qcommerce.com / admin123456
+   Customer: customer@qcommerce.com / password123
+   Settings: http://localhost:4000/admin/settings
    Visit:    http://localhost:4000
 """)

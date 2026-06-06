@@ -1,17 +1,8 @@
 <%!-- lib/qcommerce_web/live/home_live.html.heex --%>
 
-<%!-- Flash toast positioning fix: sit above the sticky navbar (z-200) and below our modals (z-400) --%>
-<style>
-  #flash-info, #flash-error, #client-error, #server-error {
-    z-index: 500 !important;
-    top: 72px !important;   /* clears the navbar height */
-    right: 16px !important;
-  }
-</style>
-
 <.flash_group flash={@flash} />
 
-<%!-- FLASH SALE TOP BANNER --%>
+<%!-- FLASH SALE BANNER --%>
 <%= if @flash_sale && @flash_countdown != "Expired" do %>
   <div style="background:var(--accent);color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;letter-spacing:.3px">
     ⚡ Flash Sale — <%= @flash_sale.discount_pct %>% off &nbsp;·&nbsp;
@@ -33,16 +24,10 @@
     </div>
   </div>
   <div class="nav-search">
-    <form phx-change="search" phx-submit="search" style="width: 100%; position: relative;">
-      <input
-        type="text"
-        name="query"
-        value={@search_query}
+    <form phx-change="search" phx-submit="search" style="width:100%;position:relative">
+      <input type="text" name="query" value={@search_query}
         placeholder='Search for "milk", "eggs", "bread"...'
-        id="searchInput"
-        autocomplete="off"
-        phx-debounce="300"
-      />
+        autocomplete="off" phx-debounce="300" />
       <span class="nav-search-icon">🔍</span>
     </form>
     <%= if length(@search_results) > 0 do %>
@@ -51,7 +36,9 @@
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;transition:background .15s"
                phx-click="show_product" phx-value-product_id={p.id}>
             <span style="font-size:14px"><%= p.emoji %> <%= p.name %></span>
-            <span style="font-size:13px;font-weight:700;color:var(--green)"><%= Qcommerce.Catalog.Product.format_price(p.base_price) %></span>
+            <span style="font-size:13px;font-weight:700;color:var(--green)">
+              <%= Qcommerce.Catalog.Product.format_price(p.base_price) %>
+            </span>
           </div>
         <% end %>
       </div>
@@ -59,14 +46,16 @@
   </div>
   <div class="nav-right">
     <%= if @current_user do %>
-      <span style="font-size: 13px; font-weight: 600; color: var(--text2); margin-right: 4px;">Hi, <%= @current_user.full_name %></span>
-      <form action={~p"/session/logout"} method="post" style="margin: 0">
+      <span style="font-size:13px;font-weight:600;color:var(--text2);margin-right:4px">
+        Hi, <%= @current_user.full_name %>
+      </span>
+      <form action={~p"/session/logout"} method="post" style="margin:0">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <button type="submit" class="nav-btn nav-btn-ghost">Logout</button>
       </form>
     <% else %>
-      <a href="#" class="nav-btn nav-btn-ghost" phx-click="show_login">Login</a>
-      <a href="#" class="nav-btn nav-btn-primary" phx-click="show_signup">Sign up</a>
+      <button class="nav-btn nav-btn-ghost" phx-click="show_login">Login</button>
+      <button class="nav-btn nav-btn-primary" phx-click="show_signup">Sign up</button>
     <% end %>
     <div class="nav-cart">
       <span>🛒</span>
@@ -97,15 +86,12 @@
 
 <div class="main">
 
-  <%!-- ── HERO CAROUSEL ── --%>
+  <%!-- HERO CAROUSEL --%>
   <div class="carousel-wrap">
     <div class="carousel-dots" id="dots">
       <%= for {_s, idx} <- Enum.with_index(carousel_slides(@slides)) do %>
-        <div
-          class={"dot #{if idx == @current_slide, do: "active"}"}
-          phx-click="go_slide"
-          phx-value-index={idx}
-        ></div>
+        <div class={"dot #{if idx == @current_slide, do: "active"}"}
+             phx-click="go_slide" phx-value-index={idx}></div>
       <% end %>
     </div>
     <div class="carousel-viewport">
@@ -133,7 +119,7 @@
                 <div class="prod-chip"
                      phx-click="add_to_cart"
                      phx-value-product_id={prod.id}
-                     phx-value-price={prod.price}>
+                     phx-value-price={prod.price_raw}>
                   <div class="prod-chip-img">
                     <%= if prod.badge do %>
                       <div class={"prod-chip-badge#{if prod.badge == "SALE", do: " sale"}"}><%= prod.badge %></div>
@@ -158,7 +144,7 @@
     <button class="carousel-btn carousel-btn-next" phx-click="next_slide">›</button>
   </div>
 
-  <%!-- ── OFFERS STRIP ── --%>
+  <%!-- OFFERS STRIP --%>
   <section class="section">
     <div class="section-head">
       <div class="section-title">🎁 Offers &amp; Deals</div>
@@ -190,15 +176,6 @@
             <div class="offer-tag" style="background:#fff3e0;color:var(--accent)"><%= @flash_countdown %> left</div>
           </div>
         </div>
-      <% else %>
-        <div class="offer-card">
-          <div class="offer-icon" style="background:#fff3e0">⚡</div>
-          <div class="offer-body">
-            <h4>Flash Sale — Snacks &amp; Drinks</h4>
-            <p>Up to 30% off, ends midnight</p>
-            <div class="offer-tag" style="background:#fff3e0;color:var(--accent)">2h 14m left</div>
-          </div>
-        </div>
       <% end %>
       <div class="offer-card">
         <div class="offer-icon" style="background:#ede7f6">🎯</div>
@@ -208,21 +185,11 @@
           <div class="offer-tag" style="background:#ede7f6;color:#673ab7">B2G1</div>
         </div>
       </div>
-      <div class="offer-card">
-        <div class="offer-icon" style="background:#e3f2fd">🚀</div>
-        <div class="offer-body">
-          <h4>10 min delivery — Guaranteed</h4>
-          <p>Or your next delivery is free</p>
-          <div class="offer-tag" style="background:#e3f2fd;color:#1565c0">PROMISE</div>
-        </div>
-      </div>
     </div>
-
-    <%!-- Coupon row --%>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
       <form phx-submit="apply_coupon" style="display:flex;gap:8px;align-items:center">
         <input type="text" name="code" placeholder="Enter coupon code" value={@coupon_code}
-          style="height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-family:var(--font-body);font-size:13px;outline:none;width:200px"/>
+          style="height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:200px" />
         <button type="submit" class="nav-btn nav-btn-primary" style="height:36px">Apply</button>
       </form>
       <%= if @coupon_error do %>
@@ -234,7 +201,7 @@
     </div>
   </section>
 
-  <%!-- ── CATEGORIES ── --%>
+  <%!-- CATEGORIES --%>
   <section class="section">
     <div class="section-head">
       <div class="section-title">🛍️ Shop by category</div>
@@ -250,7 +217,7 @@
     </div>
   </section>
 
-  <%!-- ── POPULAR NOW ── --%>
+  <%!-- POPULAR NOW --%>
   <section class="section">
     <div class="section-head">
       <div class="section-title">🔥 Popular now</div>
@@ -258,19 +225,14 @@
     </div>
     <div class="products-row">
       <%= for p <- product_display_list(@popular_products, popular_fallback()) do %>
-        <div class="prod-card"
-             phx-click="add_to_cart"
-             phx-value-product_id={p.id}
-             phx-value-price={p.price_raw}>
+        <div class="prod-card" phx-click="show_product" phx-value-product_id={p.id}>
           <div class="prod-card-img">
             <%= if p.badge do %>
               <div class={"prod-card-badge #{p.badge}"}><%= p.badge_label %></div>
             <% end %>
             <%= p.emoji %>
             <button class={"prod-card-add#{if Map.get(@cart_items, p.id, %{qty: 0}).qty > 0, do: " added"}"}
-              phx-click="add_to_cart"
-              phx-value-product_id={p.id}
-              phx-value-price={p.price_raw}>
+              phx-click="add_to_cart" phx-value-product_id={p.id} phx-value-price={p.price_raw}>
               <%= if Map.get(@cart_items, p.id, %{qty: 0}).qty > 0, do: "✓", else: "+" %>
             </button>
           </div>
@@ -293,7 +255,7 @@
     </div>
   </section>
 
-  <%!-- ── APP BANNER ── --%>
+  <%!-- APP BANNER --%>
   <div class="app-banner">
     <div class="app-banner-text">
       <h3>Get anything in <em style="color:#4ade80">10 minutes</em> 🚀</h3>
@@ -312,7 +274,7 @@
     <div class="app-banner-emoji">📱🛵</div>
   </div>
 
-  <%!-- ── FRESH FRUITS & VEGETABLES ── --%>
+  <%!-- FRESH FRUITS & VEGETABLES --%>
   <section class="section">
     <div class="section-head">
       <div class="section-title">🥬 Fresh Fruits &amp; Vegetables</div>
@@ -320,19 +282,14 @@
     </div>
     <div class="products-row">
       <%= for p <- product_display_list(@fresh_products, fresh_fallback()) do %>
-        <div class="prod-card"
-             phx-click="add_to_cart"
-             phx-value-product_id={p.id}
-             phx-value-price={p.price_raw}>
+        <div class="prod-card" phx-click="show_product" phx-value-product_id={p.id}>
           <div class="prod-card-img">
             <%= if p.badge do %>
               <div class={"prod-card-badge #{p.badge}"}><%= p.badge_label %></div>
             <% end %>
             <%= p.emoji %>
             <button class="prod-card-add"
-              phx-click="add_to_cart"
-              phx-value-product_id={p.id}
-              phx-value-price={p.price_raw}>+</button>
+              phx-click="add_to_cart" phx-value-product_id={p.id} phx-value-price={p.price_raw}>+</button>
           </div>
           <div class="prod-card-body">
             <div class="prod-card-name"><%= p.name %></div>
@@ -353,7 +310,7 @@
     </div>
   </section>
 
-  <%!-- ── DAIRY & EGGS ── --%>
+  <%!-- DAIRY & EGGS --%>
   <section class="section">
     <div class="section-head">
       <div class="section-title">🥛 Dairy &amp; Eggs</div>
@@ -361,19 +318,14 @@
     </div>
     <div class="products-row">
       <%= for p <- product_display_list(@dairy_products, dairy_fallback()) do %>
-        <div class="prod-card"
-             phx-click="add_to_cart"
-             phx-value-product_id={p.id}
-             phx-value-price={p.price_raw}>
+        <div class="prod-card" phx-click="show_product" phx-value-product_id={p.id}>
           <div class="prod-card-img">
             <%= if p.badge do %>
               <div class={"prod-card-badge #{p.badge}"}><%= p.badge_label %></div>
             <% end %>
             <%= p.emoji %>
             <button class="prod-card-add"
-              phx-click="add_to_cart"
-              phx-value-product_id={p.id}
-              phx-value-price={p.price_raw}>+</button>
+              phx-click="add_to_cart" phx-value-product_id={p.id} phx-value-price={p.price_raw}>+</button>
           </div>
           <div class="prod-card-body">
             <div class="prod-card-name"><%= p.name %></div>
@@ -409,7 +361,7 @@
   </div>
 </footer>
 
-<%!-- CART BAR (visible when cart_count > 0) --%>
+<%!-- CART BAR --%>
 <%= if @cart_count > 0 do %>
   <div class="cart-bar visible">
     <div class="cart-bar-left">
@@ -425,8 +377,7 @@
 <%= if @show_modal && @selected_product do %>
   <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;display:flex;align-items:flex-end;justify-content:center"
        phx-click="close_modal">
-    <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 24px 36px;position:relative"
-         phx-click-away="close_modal">
+    <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 24px 36px;position:relative">
       <button phx-click="close_modal"
         style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
       <div style="font-size:72px;text-align:center;margin-bottom:12px"><%= @selected_product.emoji %></div>
@@ -443,7 +394,9 @@
           <%= if @selected_product.old_price do %>
             <del style="font-size:13px;color:var(--text3)"><%= Qcommerce.Catalog.Product.format_price(@selected_product.old_price) %></del>
           <% end %>
-          <div style="font-size:22px;font-weight:800;color:var(--text)"><%= Qcommerce.Catalog.Product.format_price(@selected_product.base_price) %></div>
+          <div style="font-size:22px;font-weight:800;color:var(--text)">
+            <%= Qcommerce.Catalog.Product.format_price(@selected_product.base_price) %>
+          </div>
         </div>
         <button class="nav-btn nav-btn-primary" style="height:44px;font-size:14px;padding:0 24px"
           phx-click="add_to_cart"
@@ -458,192 +411,167 @@
 
 <%!-- LOGIN MODAL --%>
 <%= if @show_login_modal do %>
-  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;"
-       phx-click="close_login">
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:400px;padding:28px 24px;position:relative;box-shadow:0 10px 40px rgba(0,0,0,0.15);"
-         phx-click-away="close_login">
-      <button phx-click="close_login"
-        style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
-      
-      <%!-- TABS HEADER --%>
-      <div style="display:flex;background:#f3f4f6;border-radius:10px;padding:3px;margin-bottom:24px;gap:2px;">
-        <button phx-click="select_login_tab" phx-value-tab="qr" style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:#{if @login_tab == :qr, do: "#fff", else: "transparent"};color:#{if @login_tab == :qr, do: "var(--text)", else: "var(--text3)"};box-shadow:#{if @login_tab == :qr, do: "0 1px 3px rgba(0,0,0,0.1)", else: "none"};transition:all 0.15s;"}>
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400" phx-click="close_login"></div>
+  <div style="position:fixed;z-index:401;top:50%;left:50%;transform:translate(-50%,-50%);width:calc(100% - 32px);max-width:400px;background:#fff;border-radius:20px;padding:28px 24px;box-shadow:0 10px 40px rgba(0,0,0,0.15)">
+    <button phx-click="close_login"
+      style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+
+    <%!-- TAB SWITCHER --%>
+    <div style="display:flex;background:#f3f4f6;border-radius:10px;padding:3px;margin-bottom:24px;gap:2px">
+      <%= if @auth_methods.qr do %>
+        <button phx-click="select_login_tab" phx-value-tab="qr"
+          style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:all .15s;background:#{if @login_tab == :qr, do: "#fff", else: "transparent"};color:#{if @login_tab == :qr, do: "var(--text)", else: "var(--text3)"}"}>
           QR
         </button>
-        <button phx-click="select_login_tab" phx-value-tab="phone" style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:#{if @login_tab == :phone, do: "#fff", else: "transparent"};color:#{if @login_tab == :phone, do: "var(--text)", else: "var(--text3)"};box-shadow:#{if @login_tab == :phone, do: "0 1px 3px rgba(0,0,0,0.1)", else: "none"};transition:all 0.15s;"}>
+      <% end %>
+      <%= if @auth_methods.phone do %>
+        <button phx-click="select_login_tab" phx-value-tab="phone"
+          style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:all .15s;background:#{if @login_tab == :phone, do: "#fff", else: "transparent"};color:#{if @login_tab == :phone, do: "var(--text)", else: "var(--text3)"}"}>
           Phone
         </button>
-        <button phx-click="select_login_tab" phx-value-tab="email" style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:#{if @login_tab == :email, do: "#fff", else: "transparent"};color:#{if @login_tab == :email, do: "var(--text)", else: "var(--text3)"};box-shadow:#{if @login_tab == :email, do: "0 1px 3px rgba(0,0,0,0.1)", else: "none"};transition:all 0.15s;"}>
+      <% end %>
+      <%= if @auth_methods.email do %>
+        <button phx-click="select_login_tab" phx-value-tab="email"
+          style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:all .15s;background:#{if @login_tab == :email, do: "#fff", else: "transparent"};color:#{if @login_tab == :email, do: "var(--text)", else: "var(--text3)"}"}>
           Email
         </button>
-        <button phx-click="select_login_tab" phx-value-tab="passkey" style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:#{if @login_tab == :passkey, do: "#fff", else: "transparent"};color:#{if @login_tab == :passkey, do: "var(--text)", else: "var(--text3)"};box-shadow:#{if @login_tab == :passkey, do: "0 1px 3px rgba(0,0,0,0.1)", else: "none"};transition:all 0.15s;"}>
+      <% end %>
+      <%= if @auth_methods.passkey do %>
+        <button phx-click="select_login_tab" phx-value-tab="passkey"
+          style={"flex:1;height:32px;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:all .15s;background:#{if @login_tab == :passkey, do: "#fff", else: "transparent"};color:#{if @login_tab == :passkey, do: "var(--text)", else: "var(--text3)"}"}>
           Passkey
         </button>
+      <% end %>
+    </div>
+
+    <%!-- QR TAB --%>
+    <%= if @login_tab == :qr do %>
+      <div style="text-align:center">
+        <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;margin-bottom:4px">Welcome Back</h3>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:20px">Scan to login with QCommerce app</p>
+        <img src={"https://api.qrserver.com/v1/create-qr-code/?size=160&color=0c831f&data=qcommerce_login_#{@qr_countdown}"}
+             style="display:block;margin:0 auto 16px;border:3px solid var(--green);border-radius:12px;padding:6px" />
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:20px">
+          Expires in <span style="color:var(--accent)">00:<%= String.pad_leading(to_string(@qr_countdown), 2, "0") %></span>
+        </div>
+        <button phx-click="simulate_qr_login" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center">
+          Simulate QR Login
+        </button>
       </div>
+    <% end %>
 
-      <%!-- TAB CONTENT: QR --%>
-      <%= if @login_tab == :qr do %>
-        <div style="text-align:center;">
-          <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text);margin-bottom:4px;">Welcome Back</h3>
-          <p style="font-size:13px;color:var(--text3);margin-bottom:20px;">Scan the QR code below to login to the QCommerce web app</p>
-          
-          <img src={"https://api.qrserver.com/v1/create-qr-code/?size=160&color=2e7d32&data=qcommerce_login_token_#{@qr_countdown}"} 
-               style="display:block;margin:0 auto 16px;border:3px solid var(--green);border-radius:12px;padding:6px;background:#fff;" />
-          
-          <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:12px;">
-            Expires in : <span style="color:var(--accent);">00:<%= String.pad_leading(to_string(@qr_countdown), 2, "0") %></span>
+    <%!-- PHONE TAB --%>
+    <%= if @login_tab == :phone do %>
+      <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;text-align:center;margin-bottom:20px">Login with Phone</h3>
+      <%= if @login_phone_step == 1 do %>
+        <form phx-submit="submit_phone" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Mobile Number</label>
+            <input type="tel" name="phone" required placeholder="+9779876543210" value={@phone_input}
+              style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
           </div>
-          
-          <p style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:20px;">
-            Open <strong>QCommerce app</strong> &gt; Go to Settings &gt; Link Device
-          </p>
-
-          <button type="button" phx-click="simulate_qr_login" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center;font-size:14px;font-weight:700;">
-            Simulate QR Scan Login
-          </button>
-        </div>
+          <button type="submit" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center">Continue</button>
+        </form>
+      <% else %>
+        <form phx-submit="submit_otp" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">OTP Code</label>
+            <p style="font-size:11px;color:var(--text3);margin-bottom:8px">Code sent to <%= @phone_input %> — use <strong>123456</strong></p>
+            <input type="text" name="otp" required placeholder="••••••" maxlength="6"
+              style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:18px;text-align:center;letter-spacing:6px;outline:none" />
+            <%= if @otp_error do %>
+              <span style="color:var(--accent);font-size:12px;margin-top:4px;display:block"><%= @otp_error %></span>
+            <% end %>
+          </div>
+          <button type="submit" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center">Verify &amp; Login</button>
+        </form>
       <% end %>
+    <% end %>
 
-      <%!-- TAB CONTENT: PHONE --%>
-      <%= if @login_tab == :phone do %>
+    <%!-- EMAIL TAB --%>
+    <%= if @login_tab == :email do %>
+      <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;text-align:center;margin-bottom:20px">Email Sign In</h3>
+      <form action={~p"/session/login"} method="post" style="display:flex;flex-direction:column;gap:16px">
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <div>
-          <div style="text-align:center;margin-bottom:20px;">
-            <div style="width:48px;height:48px;background:var(--green);border-radius:12px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;font-family:var(--font-head);margin-bottom:8px;">Q</div>
-            <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text);">Login with Phone</h3>
-            <p style="font-size:13px;color:var(--text3);margin-top:2px;">Get started with your phone number</p>
-          </div>
-
-          <%= if @login_phone_step == 1 do %>
-            <form phx-submit="submit_phone" style="display:flex;flex-direction:column;gap:16px;">
-              <div>
-                <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;">Mobile Number</label>
-                <input type="tel" name="phone" required placeholder="e.g. +9779876543210" value={@phone_input}
-                  style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none;" />
-              </div>
-              <button type="submit" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center;font-size:14px;font-weight:700;">
-                Continue
-              </button>
-            </form>
-          <% else %>
-            <form phx-submit="submit_otp" style="display:flex;flex-direction:column;gap:16px;">
-              <div>
-                <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">OTP Code</label>
-                <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Enter the 6-digit code sent to <%= @phone_input %> (Use: <strong>123456</strong>)</p>
-                <input type="text" name="otp" required placeholder="••••••" maxLength="6"
-                  style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:18px;text-align:center;letter-spacing:6px;outline:none;" />
-                <%= if @otp_error do %>
-                  <span style="color:var(--accent);font-size:12px;margin-top:4px;display:block;"><%= @otp_error %></span>
-                <% end %>
-              </div>
-              <button type="submit" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center;font-size:14px;font-weight:700;">
-                Verify & Login
-              </button>
-            </form>
-          <% end %>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Email address</label>
+          <input type="email" name="email" required placeholder="name@domain.com"
+            style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
         </div>
-      <% end %>
-
-      <%!-- TAB CONTENT: EMAIL --%>
-      <%= if @login_tab == :email do %>
         <div>
-          <div style="text-align:center;margin-bottom:20px;">
-            <div style="width:48px;height:48px;background:var(--green);border-radius:12px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;font-family:var(--font-head);margin-bottom:8px;">Q</div>
-            <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text);">Email Sign In</h3>
-            <p style="font-size:13px;color:var(--text3);margin-top:2px;">Sign in using your password</p>
-          </div>
-
-          <form action={~p"/session/login"} method="post" style="display:flex;flex-direction:column;gap:16px;">
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-            <div>
-              <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;">Email address</label>
-              <input type="email" name="email" required placeholder="name@domain.com"
-                style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none;" />
-            </div>
-            <div>
-              <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;">Password</label>
-              <input type="password" name="password" required placeholder="••••••••"
-                style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none;" />
-            </div>
-            
-            <button type="submit" class="nav-btn nav-btn-primary" style="height:44px;width:100%;justify-content:center;font-size:14px;font-weight:700;">
-              Login
-            </button>
-          </form>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Password</label>
+          <input type="password" name="password" required placeholder="••••••••"
+            style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
         </div>
-      <% end %>
+        <button type="submit" class="nav-btn nav-btn-primary" style="height:44px;width:100%;justify-content:center">Login</button>
+      </form>
+    <% end %>
 
-      <%!-- TAB CONTENT: PASSKEY --%>
-      <%= if @login_tab == :passkey do %>
-        <div style="text-align:center;">
-          <div style="font-size:48px;margin-bottom:12px;display:inline-block;animation:pulse 2s infinite;">🔑</div>
-          <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text);margin-bottom:4px;">Passkey Login</h3>
-          <p style="font-size:13px;color:var(--text3);line-height:1.5;margin-bottom:24px;">Log in securely using your fingerprint, face scan, or lock screen passcode.</p>
-
-          <button type="button" phx-click="simulate_passkey_login" class="nav-btn nav-btn-primary" style="width:100%;height:44px;justify-content:center;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
-            <span>🛡️</span> Authenticate with Passkey
-          </button>
-        </div>
-      <% end %>
-
-      <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text2);border-top:1.5px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:6px;">
-        <span>Don't have an account? <a href="#" phx-click="show_signup" style="color:var(--green);font-weight:600;text-decoration:none;">Sign up</a></span>
-        <a href="#" phx-click="close_login" style="color:var(--text3);font-size:12px;text-decoration:none;">Continue as Guest →</a>
+    <%!-- PASSKEY TAB --%>
+    <%= if @login_tab == :passkey do %>
+      <div style="text-align:center">
+        <div style="font-size:48px;margin-bottom:12px">🔑</div>
+        <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;margin-bottom:8px">Passkey Login</h3>
+        <p style="font-size:13px;color:var(--text3);line-height:1.5;margin-bottom:24px">
+          Log in securely with fingerprint, face scan, or your device lock screen.
+        </p>
+        <button phx-click="simulate_passkey_login" class="nav-btn nav-btn-primary"
+          style="width:100%;height:44px;justify-content:center;gap:8px">
+          🛡️ Authenticate with Passkey
+        </button>
       </div>
+    <% end %>
+
+    <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text2);border-top:1.5px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:6px">
+      <span>No account? <a href="#" phx-click="show_signup" style="color:var(--green);font-weight:600;text-decoration:none">Sign up</a></span>
+      <a href="#" phx-click="close_login" style="color:var(--text3);font-size:12px;text-decoration:none">Continue as Guest →</a>
     </div>
   </div>
 <% end %>
 
 <%!-- SIGNUP MODAL --%>
 <%= if @show_signup_modal do %>
-  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;"
-       phx-click="close_signup">
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:400px;padding:32px 24px;position:relative;box-shadow:0 10px 40px rgba(0,0,0,0.15);"
-         phx-click-away="close_signup">
-      <button phx-click="close_signup"
-        style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
-      
-      <div style="text-align:center;margin-bottom:24px;">
-        <div style="width:50px;height:50px;background:var(--green);border-radius:12px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;font-family:var(--font-head);margin-bottom:8px;">Q</div>
-        <h3 style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text);">Create Account</h3>
-        <p style="font-size:13px;color:var(--text3);margin-top:2px;">Get started with 10 minute delivery</p>
-      </div>
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400" phx-click="close_signup"></div>
+  <div style="position:fixed;z-index:401;top:50%;left:50%;transform:translate(-50%,-50%);width:calc(100% - 32px);max-width:400px;background:#fff;border-radius:20px;padding:32px 24px;box-shadow:0 10px 40px rgba(0,0,0,0.15);max-height:90vh;overflow-y:auto">
+    <button phx-click="close_signup"
+      style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
 
-      <form action={~p"/session/signup"} method="post" style="display:flex;flex-direction:column;gap:14px;">
-        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">Full Name</label>
-          <input type="text" name="user[full_name]" required placeholder="John Doe"
-            style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;font-family:var(--font-body);outline:none;transition:border-color .2s;"
-            onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'" />
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">Email address</label>
-          <input type="email" name="user[email]" required placeholder="name@domain.com"
-            style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;font-family:var(--font-body);outline:none;transition:border-color .2s;"
-            onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'" />
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">Phone Number</label>
-          <input type="tel" name="user[phone]" required placeholder="+97798XXXXXXXX"
-            style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;font-family:var(--font-body);outline:none;transition:border-color .2s;"
-            onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'" />
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">Password (min 8 chars)</label>
-          <input type="password" name="user[password]" required placeholder="••••••••" minlength="8"
-            style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;font-family:var(--font-body);outline:none;transition:border-color .2s;"
-            onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'" />
-        </div>
-        
-        <button type="submit" class="nav-btn nav-btn-primary" style="height:44px;width:100%;justify-content:center;font-size:14px;margin-top:8px;">
-          Sign up
-        </button>
-      </form>
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="width:50px;height:50px;background:var(--green);border-radius:12px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin-bottom:8px">Q</div>
+      <h3 style="font-family:var(--font-head);font-size:22px;font-weight:800">Create Account</h3>
+      <p style="font-size:13px;color:var(--text3);margin-top:2px">Get started with 10 minute delivery</p>
+    </div>
 
-      <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--text2);">
-        Already have an account? 
-        <a href="#" phx-click="show_login" style="color:var(--green);font-weight:600;text-decoration:none;margin-left:4px;">Login</a>
+    <form action={~p"/session/signup"} method="post" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Full Name</label>
+        <input type="text" name="user[full_name]" required placeholder="John Doe"
+          style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
       </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Email address</label>
+        <input type="email" name="user[email]" required placeholder="name@domain.com"
+          style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Phone Number</label>
+        <input type="tel" name="user[phone]" required placeholder="+97798XXXXXXXX"
+          style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Password (min 8 chars)</label>
+        <input type="password" name="user[password]" required placeholder="••••••••" minlength="8"
+          style="width:100%;height:40px;border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none" />
+      </div>
+      <button type="submit" class="nav-btn nav-btn-primary" style="height:44px;width:100%;justify-content:center;font-size:14px;margin-top:8px">
+        Sign up
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--text2)">
+      Already have an account?
+      <a href="#" phx-click="show_login" style="color:var(--green);font-weight:600;text-decoration:none;margin-left:4px">Login</a>
     </div>
   </div>
 <% end %>
@@ -653,8 +581,6 @@
   function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
   function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
   document.getElementById('hamburgerBtn')?.addEventListener('click', openMobileNav);
-
-  // Touch swipe on carousel
   let touchX=0;
   document.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX},{passive:true});
   document.addEventListener('touchend',e=>{
