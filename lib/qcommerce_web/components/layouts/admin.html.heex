@@ -1,0 +1,421 @@
+<%!-- lib/qcommerce_web/components/layouts/admin.html.heex --%>
+<%!-- Shared admin shell: dark sidebar + topbar. Inner content is injected via @inner_content --%>
+
+<!DOCTYPE html>
+<html lang="en" class="[scrollbar-gutter:stable]">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <.live_title default="Qcommerce Admin" suffix=" · Admin">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+    <style>
+      /* ── Admin design tokens ─────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --adm-bg:       #0f1117;
+        --adm-surface:  #1a1d27;
+        --adm-card:     #21253a;
+        --adm-border:   #2e3250;
+        --adm-accent:   #6366f1;
+        --adm-accent2:  #818cf8;
+        --adm-green:    #22c55e;
+        --adm-red:      #ef4444;
+        --adm-yellow:   #f59e0b;
+        --adm-text:     #f1f5f9;
+        --adm-text2:    #94a3b8;
+        --adm-text3:    #475569;
+        --adm-sidebar:  220px;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+
+      body { background: var(--adm-bg); color: var(--adm-text); min-height: 100vh; }
+
+      /* ── Layout shell ──────────────────────────────────────────────── */
+      .adm-shell   { display: flex; min-height: 100vh; }
+
+      /* ── Sidebar ──────────────────────────────────────────────────── */
+      .adm-sidebar {
+        width: var(--adm-sidebar);
+        background: var(--adm-surface);
+        border-right: 1px solid var(--adm-border);
+        display: flex; flex-direction: column;
+        position: fixed; top: 0; left: 0; bottom: 0;
+        z-index: 50;
+        overflow-y: auto;
+      }
+      .adm-logo {
+        padding: 20px 18px 16px;
+        border-bottom: 1px solid var(--adm-border);
+        display: flex; align-items: center; gap: 10px;
+      }
+      .adm-logo-icon {
+        width: 32px; height: 32px;
+        background: linear-gradient(135deg, var(--adm-accent), #a78bfa);
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px;
+      }
+      .adm-logo-text { font-size: 13px; font-weight: 700; color: var(--adm-text); }
+      .adm-logo-sub  { font-size: 10px; color: var(--adm-text2); font-weight: 400; }
+
+      .adm-nav       { padding: 12px 10px; flex: 1; }
+      .adm-nav-group { margin-bottom: 20px; }
+      .adm-nav-group-label {
+        font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+        text-transform: uppercase; color: var(--adm-text3);
+        padding: 0 8px 6px;
+      }
+      .adm-nav-link {
+        display: flex; align-items: center; gap: 8px;
+        padding: 7px 10px; border-radius: 7px;
+        font-size: 12px; font-weight: 500; color: var(--adm-text2);
+        text-decoration: none; cursor: pointer;
+        transition: background .15s, color .15s;
+        margin-bottom: 1px;
+      }
+      .adm-nav-link:hover   { background: var(--adm-card); color: var(--adm-text); }
+      .adm-nav-link.active  { background: rgba(99,102,241,.18); color: var(--adm-accent2); }
+      .adm-nav-link .icon   { font-size: 14px; width: 18px; text-align: center; }
+      .adm-sidebar-footer {
+        padding: 12px 14px;
+        border-top: 1px solid var(--adm-border);
+        font-size: 11px; color: var(--adm-text2);
+      }
+      .adm-sidebar-footer a { color: var(--adm-text2); text-decoration: none; }
+      .adm-sidebar-footer a:hover { color: var(--adm-text); }
+
+      /* ── Main content ─────────────────────────────────────────────── */
+      .adm-main   { margin-left: var(--adm-sidebar); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+      .adm-topbar {
+        position: sticky; top: 0; z-index: 40;
+        background: rgba(15,17,23,.85);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--adm-border);
+        padding: 0 28px;
+        height: 56px;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .adm-breadcrumb { font-size: 13px; color: var(--adm-text2); display: flex; align-items: center; gap: 6px; }
+      .adm-breadcrumb a { color: var(--adm-text2); text-decoration: none; }
+      .adm-breadcrumb a:hover { color: var(--adm-text); }
+      .adm-breadcrumb .sep { color: var(--adm-text3); }
+      .adm-topbar-right { display: flex; align-items: center; gap: 12px; }
+      .adm-user-badge {
+        display: flex; align-items: center; gap: 8px;
+        background: var(--adm-card); border: 1px solid var(--adm-border);
+        border-radius: 20px; padding: 4px 12px 4px 6px;
+        font-size: 12px;
+      }
+      .adm-avatar {
+        width: 24px; height: 24px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--adm-accent), #a78bfa);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; color: #fff;
+      }
+
+      .adm-content { padding: 28px; flex: 1; }
+
+      /* ── Cards ─────────────────────────────────────────────────────── */
+      .adm-card {
+        background: var(--adm-surface);
+        border: 1px solid var(--adm-border);
+        border-radius: 12px;
+      }
+      .adm-card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--adm-border);
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .adm-card-title { font-size: 14px; font-weight: 600; }
+      .adm-card-body  { padding: 20px; }
+
+      /* ── Stat tiles ────────────────────────────────────────────────── */
+      .adm-stats { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 16px; margin-bottom: 28px; }
+      .adm-stat {
+        background: var(--adm-surface); border: 1px solid var(--adm-border);
+        border-radius: 12px; padding: 18px 20px;
+        display: flex; flex-direction: column; gap: 6px;
+        transition: border-color .2s;
+      }
+      .adm-stat:hover { border-color: var(--adm-accent); }
+      .adm-stat-icon { font-size: 24px; }
+      .adm-stat-num  { font-size: 26px; font-weight: 800; color: var(--adm-text); }
+      .adm-stat-label { font-size: 11px; font-weight: 500; color: var(--adm-text2); }
+      .adm-stat-trend { font-size: 10px; color: var(--adm-green); margin-top: 2px; }
+
+      /* ── Model grid (dashboard index) ─────────────────────────────── */
+      .adm-model-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 12px; }
+      .adm-model-card {
+        background: var(--adm-card); border: 1px solid var(--adm-border);
+        border-radius: 10px; padding: 16px;
+        display: flex; align-items: center; gap: 14px;
+        text-decoration: none; color: var(--adm-text);
+        transition: border-color .2s, transform .15s;
+      }
+      .adm-model-card:hover { border-color: var(--adm-accent); transform: translateY(-1px); }
+      .adm-model-icon {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; flex-shrink: 0;
+      }
+      .adm-model-info { flex: 1; }
+      .adm-model-name { font-size: 13px; font-weight: 600; }
+      .adm-model-group { font-size: 10px; color: var(--adm-text2); margin-top: 1px; }
+      .adm-model-arrow { color: var(--adm-text3); font-size: 16px; }
+
+      /* ── Table ────────────────────────────────────────────────────── */
+      .adm-table-wrap { overflow-x: auto; }
+      .adm-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      .adm-table th {
+        padding: 10px 14px; text-align: left;
+        font-size: 10px; font-weight: 600; letter-spacing: .8px;
+        text-transform: uppercase; color: var(--adm-text2);
+        border-bottom: 1px solid var(--adm-border);
+        white-space: nowrap;
+      }
+      .adm-table td {
+        padding: 11px 14px;
+        border-bottom: 1px solid rgba(46,50,80,.5);
+        color: var(--adm-text);
+        vertical-align: middle;
+      }
+      .adm-table tr:last-child td { border-bottom: none; }
+      .adm-table tr:hover td { background: rgba(99,102,241,.04); }
+      .adm-table .adm-id { font-family: monospace; font-size: 11px; color: var(--adm-text3); }
+      .badge {
+        display: inline-flex; align-items: center;
+        padding: 2px 8px; border-radius: 20px;
+        font-size: 10px; font-weight: 600; letter-spacing: .4px;
+      }
+      .badge-green  { background: rgba(34,197,94,.15); color: #4ade80; }
+      .badge-red    { background: rgba(239,68,68,.15);  color: #f87171; }
+      .badge-yellow { background: rgba(245,158,11,.15); color: #fbbf24; }
+      .badge-blue   { background: rgba(99,102,241,.15); color: var(--adm-accent2); }
+      .badge-gray   { background: rgba(148,163,184,.1); color: var(--adm-text2); }
+
+      /* ── Toolbar ──────────────────────────────────────────────────── */
+      .adm-toolbar {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--adm-border);
+        flex-wrap: wrap;
+      }
+      .adm-search {
+        flex: 1; min-width: 200px; max-width: 360px;
+        height: 34px; padding: 0 12px 0 34px;
+        background: var(--adm-card); border: 1px solid var(--adm-border);
+        border-radius: 7px; color: var(--adm-text); font-size: 12.5px;
+        outline: none; transition: border-color .2s;
+        position: relative;
+      }
+      .adm-search:focus { border-color: var(--adm-accent); }
+      .adm-search-wrap { position: relative; display: flex; align-items: center; }
+      .adm-search-icon { position: absolute; left: 10px; color: var(--adm-text3); font-size: 13px; z-index:1; }
+      .adm-btn {
+        height: 34px; padding: 0 14px; border-radius: 7px;
+        font-size: 12px; font-weight: 600; cursor: pointer;
+        border: 1px solid var(--adm-border);
+        display: inline-flex; align-items: center; gap: 6px;
+        text-decoration: none; transition: all .15s;
+      }
+      .adm-btn-primary   { background: var(--adm-accent); color: #fff; border-color: var(--adm-accent); }
+      .adm-btn-primary:hover { background: #4f46e5; }
+      .adm-btn-ghost     { background: transparent; color: var(--adm-text2); }
+      .adm-btn-ghost:hover { background: var(--adm-card); color: var(--adm-text); }
+      .adm-btn-danger    { background: rgba(239,68,68,.15); color: #f87171; border-color: rgba(239,68,68,.3); }
+      .adm-btn-danger:hover { background: rgba(239,68,68,.25); }
+
+      .adm-spacer { flex: 1; }
+
+      /* ── Pagination ───────────────────────────────────────────────── */
+      .adm-pagination {
+        display: flex; align-items: center; gap: 6px;
+        padding: 12px 20px;
+        border-top: 1px solid var(--adm-border);
+        font-size: 12px; color: var(--adm-text2);
+      }
+      .adm-page-btn {
+        min-width: 30px; height: 30px; border-radius: 6px;
+        border: 1px solid var(--adm-border);
+        background: var(--adm-card); color: var(--adm-text2);
+        font-size: 12px; cursor: pointer; font-weight: 500;
+        display: inline-flex; align-items: center; justify-content: center;
+        text-decoration: none; transition: all .15s;
+      }
+      .adm-page-btn:hover   { border-color: var(--adm-accent); color: var(--adm-accent2); }
+      .adm-page-btn.current { background: var(--adm-accent); color: #fff; border-color: var(--adm-accent); }
+      .adm-page-btn:disabled { opacity: .4; cursor: default; }
+
+      /* ── Detail / Form ────────────────────────────────────────────── */
+      .adm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .adm-form-grid .full { grid-column: 1 / -1; }
+      .adm-field { display: flex; flex-direction: column; gap: 5px; }
+      .adm-label { font-size: 11px; font-weight: 600; color: var(--adm-text2); letter-spacing: .3px; }
+      .adm-label .req { color: var(--adm-red); margin-left: 2px; }
+      .adm-input, .adm-select, .adm-textarea {
+        background: var(--adm-card); border: 1px solid var(--adm-border);
+        border-radius: 7px; color: var(--adm-text); font-size: 13px;
+        padding: 8px 12px; outline: none; width: 100%;
+        transition: border-color .2s;
+        font-family: inherit;
+      }
+      .adm-input:focus, .adm-select:focus, .adm-textarea:focus { border-color: var(--adm-accent); }
+      .adm-input:disabled, .adm-select:disabled, .adm-textarea:disabled {
+        opacity: .5; cursor: not-allowed;
+      }
+      .adm-textarea { min-height: 90px; resize: vertical; }
+      .adm-select option { background: var(--adm-card); }
+      .adm-val-error { font-size: 11px; color: #f87171; margin-top: 2px; }
+      .adm-readonly-val {
+        padding: 8px 12px; background: rgba(99,102,241,.06);
+        border: 1px solid var(--adm-border); border-radius: 7px;
+        font-size: 13px; color: var(--adm-text2);
+        font-family: monospace;
+      }
+
+      /* ── Flash messages ──────────────────────────────────────────── */
+      .adm-flash {
+        padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+        margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+      }
+      .adm-flash-info    { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3); color: var(--adm-accent2); }
+      .adm-flash-error   { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+      .adm-flash-success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #4ade80; }
+
+      /* ── Section headings ────────────────────────────────────────── */
+      .adm-page-header { margin-bottom: 24px; }
+      .adm-page-title  { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+      .adm-page-sub    { font-size: 13px; color: var(--adm-text2); margin-top: 4px; }
+
+      /* ── Empty state ─────────────────────────────────────────────── */
+      .adm-empty {
+        text-align: center; padding: 56px 20px;
+        color: var(--adm-text2);
+      }
+      .adm-empty-icon { font-size: 40px; margin-bottom: 12px; }
+      .adm-empty-msg  { font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--adm-text); }
+      .adm-empty-sub  { font-size: 12px; }
+
+      /* ── Checkbox toggle ─────────────────────────────────────────── */
+      .adm-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+      .adm-checkbox input[type=checkbox] {
+        width: 16px; height: 16px; accent-color: var(--adm-accent);
+        cursor: pointer;
+      }
+
+      /* ── Scrollbar ───────────────────────────────────────────────── */
+      ::-webkit-scrollbar { width: 5px; height: 5px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: var(--adm-border); border-radius: 4px; }
+
+      /* ── Responsive ──────────────────────────────────────────────── */
+      @media (max-width: 700px) {
+        .adm-sidebar { display: none; }
+        .adm-main { margin-left: 0; }
+        .adm-form-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="adm-shell">
+      <!-- Sidebar -->
+      <nav class="adm-sidebar" id="adm-sidebar">
+        <!-- Logo -->
+        <div class="adm-logo">
+          <div class="adm-logo-icon">⚡</div>
+          <div>
+            <div class="adm-logo-text">Qcommerce</div>
+            <div class="adm-logo-sub">Admin Panel</div>
+          </div>
+        </div>
+
+        <!-- Nav -->
+        <div class="adm-nav">
+          <!-- Dashboard link -->
+          <div class="adm-nav-group">
+            <div class="adm-nav-group-label">Overview</div>
+            <a href="/admin" class={"adm-nav-link #{if assigns[:admin_section] == :dashboard, do: "active"}"}>
+              <span class="icon">🏠</span> Dashboard
+            </a>
+            <a href="/admin/settings" class={"adm-nav-link #{if assigns[:admin_section] == :settings, do: "active"}"}>
+              <span class="icon">⚙️</span> Settings
+            </a>
+          </div>
+
+          <!-- Registered model groups -->
+          <%= for {group, entries} <- Qcommerce.Admin.Registry.grouped() do %>
+            <div class="adm-nav-group">
+              <div class="adm-nav-group-label"><%= group %></div>
+              <%= for entry <- entries do %>
+                <a href={"/admin/r/#{Qcommerce.Admin.Registry.schema_to_slug(entry.schema)}"}
+                   class={"adm-nav-link #{if assigns[:admin_resource] == entry.schema, do: "active"}"}>
+                  <span class="icon"><%= entry.icon %></span> <%= entry.label %>
+                </a>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Footer -->
+        <div class="adm-sidebar-footer">
+          <div style="margin-bottom:4px;">
+            <a href="/">← Back to store</a>
+          </div>
+          <div style="font-size:10px;color:var(--adm-text3);">Qcommerce Admin v1.0</div>
+        </div>
+      </nav>
+
+      <!-- Main -->
+      <div class="adm-main">
+        <!-- Topbar -->
+        <div class="adm-topbar">
+          <div class="adm-breadcrumb">
+            <a href="/admin">Admin</a>
+            <%= if assigns[:breadcrumb] do %>
+              <span class="sep">›</span>
+              <%= for {label, href} <- Enum.drop(assigns[:breadcrumb], 1) do %>
+                <%= if href do %>
+                  <a href={href}><%= label %></a>
+                <% else %>
+                  <span><%= label %></span>
+                <% end %>
+                <span class="sep">›</span>
+              <% end %>
+            <% end %>
+          </div>
+          <div class="adm-topbar-right">
+            <%= if assigns[:current_user] do %>
+              <div class="adm-user-badge">
+                <div class="adm-avatar">
+                  <%= String.first(assigns[:current_user].full_name || "A") %>
+                </div>
+                <span><%= assigns[:current_user].full_name %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Page content -->
+        <div class="adm-content">
+          <%= if flash_info = Phoenix.Flash.get(@flash, :info) do %>
+            <div class="adm-flash adm-flash-info">ℹ️ <%= flash_info %></div>
+          <% end %>
+          <%= if flash_error = Phoenix.Flash.get(@flash, :error) do %>
+            <div class="adm-flash adm-flash-error">⚠️ <%= flash_error %></div>
+          <% end %>
+
+          {@inner_content}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

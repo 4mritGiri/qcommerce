@@ -41,6 +41,16 @@ defmodule QcommerceWeb.Router do
     plug AuthPlug, roles: [:super_admin]
   end
 
+  # Admin — browser + admin layout
+  pipeline :admin_browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {QcommerceWeb.Layouts, :admin}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
   # ── Browser / LiveView ──
   scope "/", QcommerceWeb do
     pipe_through :browser
@@ -59,8 +69,21 @@ defmodule QcommerceWeb.Router do
   end
 
   scope "/admin", QcommerceWeb.Admin do
-    pipe_through :browser
-    live "/settings", SettingsLive, :index
+    pipe_through :admin_browser
+
+    live_session :admin, layout: {QcommerceWeb.Layouts, :admin_app} do
+      # Dashboard
+      live "/",        DashboardLive, :index
+
+      # Generic resource CRUD — drives from Admin.Registry
+      live "/r/:resource",           ResourceLive, :list
+      live "/r/:resource/new",       ResourceLive, :new
+      live "/r/:resource/:id",       ResourceLive, :show
+      live "/r/:resource/:id/edit",  ResourceLive, :edit
+
+      # Settings (existing)
+      live "/settings", SettingsLive, :index
+    end
   end
 
 

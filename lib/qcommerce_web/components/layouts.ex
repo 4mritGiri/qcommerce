@@ -1,14 +1,9 @@
-defmodule QcommerceWeb.Layouts do
-  @moduledoc """
-  This module holds different layouts used by your application.
+# lib/qcommerce_web/components/layouts.ex
 
-  See the `layouts` directory for all templates available.
-  The "root" layout is a skeleton rendered as part of the
-  application router. The "app" layout is set as the default
-  layout on both `use QcommerceWeb, :controller` and
-  `use QcommerceWeb, :live_view`.
-  """
+defmodule QcommerceWeb.Layouts do
   use QcommerceWeb, :html
 
+  # Embeds all .heex files in the layouts/ directory.
+  # Each file becomes a function: root.html.heex → root/1, admin.html.heex → admin/1
   embed_templates "layouts/*"
 end
