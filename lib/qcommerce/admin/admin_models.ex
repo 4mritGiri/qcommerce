@@ -12,6 +12,7 @@ defmodule Qcommerce.Admin.ProductAdmin do
     label:           "Products",
     group:           "Catalog",
     icon:            "product",
+    roles:           [:super_admin, :manager],
     list_fields:     [:id, :name, :sku, :base_price, :unit, :is_active, :inserted_at],
     search_fields:   [:name, :sku],
     readonly_fields: [:id, :inserted_at, :updated_at]
@@ -24,6 +25,7 @@ defmodule Qcommerce.Admin.CategoryAdmin do
     label:           "Categories",
     group:           "Catalog",
     icon:            "hero-tag",
+    roles:           [:super_admin, :manager],
     list_fields:     [:id, :name, :slug, :sort_order, :is_active],
     search_fields:   [:name, :slug],
     readonly_fields: [:id, :inserted_at]
@@ -36,6 +38,7 @@ defmodule Qcommerce.Admin.SlideAdmin do
     label:           "Hero Slides",
     group:           "Catalog",
     icon:            "hero-photo",
+    roles:           [:super_admin],
     list_fields:     [:id, :tag, :heading, :position, :is_active],
     search_fields:   [:tag, :heading],
     readonly_fields: [:id, :inserted_at]
@@ -48,6 +51,7 @@ defmodule Qcommerce.Admin.FlashSaleAdmin do
     label:           "Flash Sales",
     group:           "Catalog",
     icon:            "hero-bolt",
+    roles:           [:super_admin, :manager],
     list_fields:     [:id, :label, :discount_pct, :ends_at, :is_active],
     search_fields:   [:label],
     readonly_fields: [:id, :inserted_at]
@@ -64,6 +68,7 @@ defmodule Qcommerce.Admin.UserAdmin do
     label:           "Users",
     group:           "Accounts",
     icon:            "hero-user",
+    roles:           [:super_admin],
     list_fields:     [:id, :full_name, :email, :phone, :role, :is_active, :inserted_at],
     search_fields:   [:full_name, :email, :phone],
     # password_hash must never appear in the edit form
@@ -81,6 +86,7 @@ defmodule Qcommerce.Admin.BranchAdmin do
     label:           "Branches",
     group:           "Platform",
     icon:            "hero-building-storefront",
+    roles:           [:super_admin, :manager],
     list_fields:     [:id, :code, :name, :city, :catchment_radius_m, :is_active],
     search_fields:   [:name, :code, :city],
     # location is a Geo.Point — not editable via text input
@@ -98,6 +104,7 @@ defmodule Qcommerce.Admin.OrderAdmin do
     label:           "Orders",
     group:           "Orders",
     icon:            "hero-shopping-cart",
+    roles:           [:super_admin, :manager, :staff],
     list_fields:     [:id, :status, :total_amount, :placed_at, :delivered_at],
     search_fields:   [],
     # Orders are read-only in admin — mutations go through the Orders pipeline
@@ -115,6 +122,7 @@ defmodule Qcommerce.Admin.OrderItemAdmin do
     label:           "Order Items",
     group:           "Orders",
     icon:            "hero-document-text",
+    roles:           [:super_admin, :manager, :staff],
     list_fields:     [:id, :order_id, :quantity, :unit_price, :line_total, :status],
     search_fields:   [],
     actions:         [:show],
@@ -132,6 +140,7 @@ defmodule Qcommerce.Admin.RiderAdmin do
     label:           "Riders",
     group:           "Delivery",
     icon:            "hero-truck",
+    roles:           [:super_admin, :manager],
     list_fields:     [:id, :user_id, :vehicle_type, :license_number, :status, :inserted_at],
     search_fields:   [:license_number],
     # current_location is a Geo.Point
@@ -149,6 +158,7 @@ defmodule Qcommerce.Admin.BranchInventoryAdmin do
     label:           "Branch Inventory",
     group:           "Inventory",
     icon:            "hero-chart-bar",
+    roles:           [:super_admin, :manager],
     list_fields:     [:id, :branch_id, :product_id, :selling_price, :quantity_on_hand, :is_available],
     search_fields:   [],
     readonly_fields: [:id, :updated_at]

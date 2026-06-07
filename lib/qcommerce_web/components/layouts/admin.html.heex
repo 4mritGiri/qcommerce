@@ -413,14 +413,16 @@
               <QcommerceWeb.Layouts.sidebar_icon icon="hero-home" />
               <span class="lbl">Dashboard</span>
             </a>
-            <a href="/admin/settings" class={"adm-nav-link #{if assigns[:admin_section] == :settings, do: "active"}"}>
-              <QcommerceWeb.Layouts.sidebar_icon icon="hero-cog-6-tooth" />
-              <span class="lbl">Settings</span>
-            </a>
+            <%= if assigns[:current_user] && assigns[:current_user].role == :super_admin do %>
+              <a href="/admin/settings" class={"adm-nav-link #{if assigns[:admin_section] == :settings, do: "active"}"}>
+                <QcommerceWeb.Layouts.sidebar_icon icon="hero-cog-6-tooth" />
+                <span class="lbl">Settings</span>
+              </a>
+            <% end %>
           </div>
 
           <!-- Registered model groups -->
-          <%= for {group, entries} <- Qcommerce.Admin.Registry.grouped() do %>
+          <%= for {group, entries} <- Qcommerce.Admin.Registry.grouped_for(@current_user) do %>
             <div class="adm-nav-group">
               <div class="adm-nav-group-label"><%= group %></div>
               <%= for entry <- entries do %>

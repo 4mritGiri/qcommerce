@@ -1,7 +1,7 @@
 # lib/qcommerce/admin/registry.ex
 defmodule Qcommerce.Admin.Registry do
   @moduledoc """
-  Django-style admin model registry.
+  Django-style admin model registry with role-based access control.
 
   To register a model:
 
@@ -10,7 +10,8 @@ defmodule Qcommerce.Admin.Registry do
         context: Qcommerce.Catalog,
         label: "Products",
         group: "Catalog",
-        icon: "📦",
+        icon: "hero-package",
+        roles: [:super_admin, :manager],   # who can access — defaults to [:super_admin]
         list_fields: [:id, :name, :sku, :base_price, :is_active, :inserted_at],
         search_fields: [:name, :sku],
         readonly_fields: [:id, :inserted_at, :updated_at],
@@ -39,6 +40,16 @@ defmodule Qcommerce.Admin.Registry do
     |> Enum.sort_by(&{&1.group, &1.label})
   end
 
+  @doc "Return configs visible to a specific user (filtered by role)."
+  def all_for(nil), do: []
+  def all_for(%{role: role}) do
+    all()
+    |> Enum.filter(fn config ->
+      roles = config[:roles] || [:super_admin]
+      roles == :all or role in roles
+    end)
+  end
+
   @doc "Return config for a specific schema module (as string slug or atom)."
   def get(schema_slug) when is_binary(schema_slug) do
     all()
@@ -50,9 +61,17 @@ defmodule Qcommerce.Admin.Registry do
     |> Enum.find(&(&1.schema == schema_mod))
   end
 
-  @doc "Grouped registry entries for the sidebar nav."
+  @doc "Grouped registry entries for the sidebar nav (all roles)."
   def grouped do
     all()
+    |> Enum.group_by(& &1.group)
+    |> Enum.sort_by(fn {group, _} -> group end)
+  end
+
+  @doc "Grouped registry entries filtered to what the given user can see."
+  def grouped_for(nil), do: []
+  def grouped_for(user) do
+    all_for(user)
     |> Enum.group_by(& &1.group)
     |> Enum.sort_by(fn {group, _} -> group end)
   end
@@ -75,6 +94,7 @@ defmodule Qcommerce.Admin.Registry do
           label:           Keyword.get(unquote(opts), :label, "Records"),
           group:           Keyword.get(unquote(opts), :group, "General"),
           icon:            Keyword.get(unquote(opts), :icon, "hero-document"),
+          roles:           Keyword.get(unquote(opts), :roles, [:super_admin]),
           list_fields:     Keyword.get(unquote(opts), :list_fields, [:id, :inserted_at]),
           search_fields:   Keyword.get(unquote(opts), :search_fields, []),
           readonly_fields: Keyword.get(unquote(opts), :readonly_fields, [:id, :inserted_at, :updated_at]),

@@ -24,24 +24,35 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     user_id = session["user_id"]
     user    = user_id && Repo.get(User, user_id)
 
-    if is_nil(user) or user.role != :super_admin do
+    allowed_roles = [:super_admin, :manager, :staff]
+
+    if is_nil(user) or user.role not in allowed_roles do
       {:ok, push_navigate(socket, to: "/")}
     else
       config = Registry.get(slug)
 
-      if is_nil(config) do
-        {:ok,
-         socket
-         |> put_flash(:error, "Model '#{slug}' is not registered.")
-         |> push_navigate(to: "/admin")}
-      else
-        {:ok,
-         socket
-         |> assign(:current_user, user)
-         |> assign(:config, config)
-         |> assign(:resource_slug, Registry.schema_to_slug(config.schema))
-         |> assign(:admin_resource, config.schema)
-         |> assign(:per_page, @per_page)}
+      cond do
+        is_nil(config) ->
+          {:ok,
+           socket
+           |> put_flash(:error, "Model '#{slug}' is not registered.")
+           |> push_navigate(to: "/admin")}
+
+        # Check per-model role permission
+        user.role not in (config[:roles] || [:super_admin]) ->
+          {:ok,
+           socket
+           |> put_flash(:error, "You don't have permission to access this resource.")
+           |> push_navigate(to: "/admin")}
+
+        true ->
+          {:ok,
+           socket
+           |> assign(:current_user, user)
+           |> assign(:config, config)
+           |> assign(:resource_slug, Registry.schema_to_slug(config.schema))
+           |> assign(:admin_resource, config.schema)
+           |> assign(:per_page, @per_page)}
       end
     end
   end
