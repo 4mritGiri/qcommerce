@@ -9,17 +9,33 @@ defmodule Qcommerce.Admin.FieldHelper do
   def fields_for(schema_mod) do
     fields   = schema_mod.__schema__(:fields)
     required = required_fields(schema_mod)
+    assocs   = assoc_mappings(schema_mod)
 
     Enum.map(fields, fn field ->
       type = schema_mod.__schema__(:type, field)
+      assoc = Map.get(assocs, field)
+      input_type = if assoc, do: :autocomplete, else: input_type_for(type, field)
+
       %{
         name:       field,
         type:       type,
         required:   field in required,
         virtual:    false,
         label:      humanize(field),
-        input_type: input_type_for(type, field)
+        input_type: input_type,
+        assoc:      assoc
       }
+    end)
+  end
+
+  defp assoc_mappings(schema_mod) do
+    schema_mod.__schema__(:associations)
+    |> Enum.map(fn assoc_name ->
+      schema_mod.__schema__(:association, assoc_name)
+    end)
+    |> Enum.filter(&(&1.relationship == :parent))
+    |> Map.new(fn assoc ->
+      {assoc.owner_key, %{schema: assoc.queryable, assoc_name: assoc.field}}
     end)
   end
 
