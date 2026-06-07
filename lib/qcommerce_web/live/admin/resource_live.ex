@@ -772,7 +772,9 @@ defmodule QcommerceWeb.Admin.ResourceLive do
       <div class="adm-table-wrap">
         <%= if @records == [] do %>
           <div class="adm-empty">
-            <div class="adm-empty-icon"><%= @config.icon %></div>
+            <div class="adm-empty-icon" style="display:flex;justify-content:center;margin-bottom:12px;color:var(--adm-text3);">
+              <QcommerceWeb.Layouts.sidebar_icon icon={@config.icon} class="w-12 h-12" />
+            </div>
             <div class="adm-empty-msg">No <%= @config.label |> String.downcase() %> found</div>
             <div class="adm-empty-sub">Try a different search or add a new record.</div>
           </div>

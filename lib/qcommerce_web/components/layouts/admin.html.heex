@@ -32,7 +32,8 @@
         --adm-text:     #f1f5f9;
         --adm-text2:    #94a3b8;
         --adm-text3:    #475569;
-        --adm-sidebar:  220px;
+        --adm-sidebar:  240px;
+        --adm-sidebar-transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         font-family: 'Inter', system-ui, sans-serif;
       }
 
@@ -48,13 +49,17 @@
         border-right: 1px solid var(--adm-border);
         display: flex; flex-direction: column;
         position: fixed; top: 0; left: 0; bottom: 0;
-        z-index: 50;
+        z-index: 100;
         overflow-y: auto;
+        transition: var(--adm-sidebar-transition);
       }
       .adm-logo {
         padding: 20px 18px 16px;
         border-bottom: 1px solid var(--adm-border);
         display: flex; align-items: center; gap: 10px;
+        overflow: hidden;
+        max-height: 56px;
+        min-height: 56px;
       }
       .adm-logo-icon {
         width: 32px; height: 32px;
@@ -62,9 +67,10 @@
         border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
         font-size: 16px;
+        flex-shrink: 0;
       }
-      .adm-logo-text { font-size: 13px; font-weight: 700; color: var(--adm-text); }
-      .adm-logo-sub  { font-size: 10px; color: var(--adm-text2); font-weight: 400; }
+      .adm-logo-text { font-size: 13px; font-weight: 700; color: var(--adm-text); white-space: nowrap; }
+      .adm-logo-sub  { font-size: 10px; color: var(--adm-text2); font-weight: 400; white-space: nowrap; }
 
       .adm-nav       { padding: 12px 10px; flex: 1; }
       .adm-nav-group { margin-bottom: 20px; }
@@ -72,28 +78,79 @@
         font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
         text-transform: uppercase; color: var(--adm-text3);
         padding: 0 8px 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .adm-nav-link {
-        display: flex; align-items: center; gap: 8px;
-        padding: 7px 10px; border-radius: 7px;
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 12px; border-radius: 8px;
         font-size: 12px; font-weight: 500; color: var(--adm-text2);
         text-decoration: none; cursor: pointer;
         transition: background .15s, color .15s;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
+        white-space: nowrap;
       }
       .adm-nav-link:hover   { background: var(--adm-card); color: var(--adm-text); }
       .adm-nav-link.active  { background: rgba(99,102,241,.18); color: var(--adm-accent2); }
-      .adm-nav-link .icon   { font-size: 14px; width: 18px; text-align: center; }
+      .adm-nav-link .icon   {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 16px; height: 16px; flex-shrink: 0;
+      }
+      .adm-nav-link .lbl    { transition: opacity 0.15s; }
+
+      .nav-svg {
+        width: 16px; height: 16px;
+        stroke: currentColor; stroke-width: 2; fill: none;
+        stroke-linecap: round; stroke-linejoin: round;
+        vertical-align: middle;
+      }
+
       .adm-sidebar-footer {
         padding: 12px 14px;
         border-top: 1px solid var(--adm-border);
         font-size: 11px; color: var(--adm-text2);
+        overflow: hidden;
       }
-      .adm-sidebar-footer a { color: var(--adm-text2); text-decoration: none; }
+      .adm-sidebar-footer a { color: var(--adm-text2); text-decoration: none; white-space: nowrap; }
       .adm-sidebar-footer a:hover { color: var(--adm-text); }
 
+      /* ── Collapsible Sidebar ────────────────────────────────────────── */
+      body.sidebar-collapsed {
+        --adm-sidebar: 68px;
+      }
+      body.sidebar-collapsed .adm-logo-text,
+      body.sidebar-collapsed .adm-logo-sub,
+      body.sidebar-collapsed .adm-nav-group-label,
+      body.sidebar-collapsed .adm-sidebar-footer,
+      body.sidebar-collapsed .adm-nav-link .lbl {
+        display: none !important;
+      }
+      body.sidebar-collapsed .adm-logo {
+        justify-content: center;
+        padding: 20px 0 16px;
+      }
+      body.sidebar-collapsed .adm-nav-link {
+        justify-content: center;
+        padding: 10px;
+        margin: 2px 4px;
+      }
+
+      /* Toggle Button */
+      .adm-sidebar-toggle {
+        background: transparent; border: none;
+        color: var(--adm-text2); cursor: pointer;
+        padding: 6px; border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        margin-right: 12px;
+        transition: background .15s, color .15s;
+      }
+      .adm-sidebar-toggle:hover {
+        background: var(--adm-surface); color: var(--adm-text);
+      }
+
       /* ── Main content ─────────────────────────────────────────────── */
-      .adm-main   { margin-left: var(--adm-sidebar); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+      .adm-main   { margin-left: var(--adm-sidebar); flex: 1; display: flex; flex-direction: column; min-height: 100vh; transition: var(--adm-sidebar-transition); }
       .adm-topbar {
         position: sticky; top: 0; z-index: 40;
         background: rgba(15,17,23,.85);
@@ -338,7 +395,9 @@
       <nav class="adm-sidebar" id="adm-sidebar">
         <!-- Logo -->
         <div class="adm-logo">
-          <div class="adm-logo-icon">⚡</div>
+          <div class="adm-logo-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:#fff;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
           <div>
             <div class="adm-logo-text">Qcommerce</div>
             <div class="adm-logo-sub">Admin Panel</div>
@@ -351,10 +410,12 @@
           <div class="adm-nav-group">
             <div class="adm-nav-group-label">Overview</div>
             <a href="/admin" class={"adm-nav-link #{if assigns[:admin_section] == :dashboard, do: "active"}"}>
-              <span class="icon">🏠</span> Dashboard
+              <QcommerceWeb.Layouts.sidebar_icon icon="🏠" />
+              <span class="lbl">Dashboard</span>
             </a>
             <a href="/admin/settings" class={"adm-nav-link #{if assigns[:admin_section] == :settings, do: "active"}"}>
-              <span class="icon">⚙️</span> Settings
+              <QcommerceWeb.Layouts.sidebar_icon icon="⚙️" />
+              <span class="lbl">Settings</span>
             </a>
           </div>
 
@@ -365,7 +426,8 @@
               <%= for entry <- entries do %>
                 <a href={"/admin/r/#{Qcommerce.Admin.Registry.schema_to_slug(entry.schema)}"}
                    class={"adm-nav-link #{if assigns[:admin_resource] == entry.schema, do: "active"}"}>
-                  <span class="icon"><%= entry.icon %></span> <%= entry.label %>
+                  <QcommerceWeb.Layouts.sidebar_icon icon={entry.icon} />
+                  <span class="lbl"><%= entry.label %></span>
                 </a>
               <% end %>
             </div>
@@ -385,19 +447,26 @@
       <div class="adm-main">
         <!-- Topbar -->
         <div class="adm-topbar">
-          <div class="adm-breadcrumb">
-            <a href="/admin">Admin</a>
-            <%= if assigns[:breadcrumb] do %>
-              <span class="sep">›</span>
-              <%= for {label, href} <- Enum.drop(assigns[:breadcrumb], 1) do %>
-                <%= if href do %>
-                  <a href={href}><%= label %></a>
-                <% else %>
-                  <span><%= label %></span>
-                <% end %>
+          <div style="display:flex;align-items:center;">
+            <%# Sidebar collapse button %>
+            <button type="button" class="adm-sidebar-toggle" onclick="document.body.classList.toggle('sidebar-collapsed')">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-svg"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+
+            <div class="adm-breadcrumb">
+              <a href="/admin">Admin</a>
+              <%= if assigns[:breadcrumb] do %>
                 <span class="sep">›</span>
-              <% end %>
-            <% end %>
+                <%= for {label, href} <- Enum.drop(assigns[:breadcrumb], 1) do %>
+                  <%= if href do %>
+                    <a href={href}><%= label %></a>
+                  <% else %>
+                    <span><%= label %></span>
+                  <% end %>
+                  <span class="sep">›</span>
+                <% end %>
+              <%= end %>
+            </div>
           </div>
           <div class="adm-topbar-right">
             <%= if assigns[:current_user] do %>
