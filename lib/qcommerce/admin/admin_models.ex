@@ -104,7 +104,8 @@ defmodule Qcommerce.Admin.OrderAdmin do
     actions:         [:show],
     readonly_fields: [:id, :user_id, :branch_id, :placed_at, :confirmed_at,
                       :picked_at, :dispatched_at, :delivered_at,
-                      :cancelled_at, :inserted_at, :updated_at]
+                      :cancelled_at, :inserted_at, :updated_at
+                    ]
 end
 
 defmodule Qcommerce.Admin.OrderItemAdmin do
