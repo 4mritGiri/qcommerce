@@ -56,29 +56,29 @@ defmodule QcommerceWeb.Admin.DashboardLive do
     <!-- Stat tiles -->
     <div class="adm-stats">
       <div class="adm-stat">
-        <div class="adm-stat-icon">👤</div>
+        <div class="adm-stat-icon"><QcommerceWeb.Layouts.sidebar_icon icon="hero-user" class="w-8 h-8" /></div>
         <div class="adm-stat-num"><%= @stats.users %></div>
         <div class="adm-stat-label">Total Users</div>
       </div>
       <div class="adm-stat">
-        <div class="adm-stat-icon">📦</div>
+        <div class="adm-stat-icon"><QcommerceWeb.Layouts.sidebar_icon icon="product" class="w-8 h-8" /></div>
         <div class="adm-stat-num"><%= @stats.products %></div>
         <div class="adm-stat-label">Products</div>
         <div class="adm-stat-trend"><%= @stats.active_products %> active</div>
       </div>
       <div class="adm-stat">
-        <div class="adm-stat-icon">🏪</div>
+        <div class="adm-stat-icon"><QcommerceWeb.Layouts.sidebar_icon icon="hero-building-storefront" class="w-8 h-8" /></div>
         <div class="adm-stat-num"><%= @stats.branches %></div>
         <div class="adm-stat-label">Branches</div>
       </div>
       <div class="adm-stat">
-        <div class="adm-stat-icon">🛒</div>
+        <div class="adm-stat-icon"><QcommerceWeb.Layouts.sidebar_icon icon="hero-shopping-cart" class="w-8 h-8" /></div>
         <div class="adm-stat-num"><%= @stats.orders %></div>
         <div class="adm-stat-label">Total Orders</div>
         <div class="adm-stat-trend"><%= @stats.today_orders %> today</div>
       </div>
       <div class="adm-stat">
-        <div class="adm-stat-icon">⏳</div>
+        <div class="adm-stat-icon"><QcommerceWeb.Layouts.sidebar_icon icon="hero-clock" class="w-8 h-8" /></div>
         <div class="adm-stat-num"><%= @stats.pending_orders %></div>
         <div class="adm-stat-label">Pending Orders</div>
       </div>
@@ -87,14 +87,19 @@ defmodule QcommerceWeb.Admin.DashboardLive do
     <!-- Registered models grid -->
     <div class="adm-card" style="margin-bottom:24px;">
       <div class="adm-card-header">
-        <span class="adm-card-title">📋 Registered Models</span>
+        <span class="adm-card-title" style="display:inline-flex;align-items:center;gap:6px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon="hero-squares-2x2" class="w-5 h-5" />
+          Registered Models
+        </span>
         <span style="font-size:11px;color:var(--adm-text2);"><%= length(@registry) %> models registered</span>
       </div>
       <div class="adm-card-body">
         <div class="adm-model-grid">
           <%= for entry <- @registry do %>
             <a href={"/admin/r/#{Qcommerce.Admin.Registry.schema_to_slug(entry.schema)}"} class="adm-model-card">
-              <div class="adm-model-icon"><%= entry.icon %></div>
+              <div class="adm-model-icon">
+                <QcommerceWeb.Layouts.sidebar_icon icon={entry.icon} class="w-8 h-8" />
+              </div>
               <div class="adm-model-info">
                 <div class="adm-model-name"><%= entry.label %></div>
                 <div class="adm-model-group"><%= entry.group %></div>
@@ -109,14 +114,20 @@ defmodule QcommerceWeb.Admin.DashboardLive do
     <!-- Quick links -->
     <div class="adm-card">
       <div class="adm-card-header">
-        <span class="adm-card-title">⚡ Quick Actions</span>
+        <span class="adm-card-title" style="display:inline-flex;align-items:center;gap:6px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon="hero-bolt" class="w-5 h-5" />
+          Quick Actions
+        </span>
       </div>
       <div class="adm-card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
         <a href="/admin/r/product/new" class="adm-btn adm-btn-primary">+ Add Product</a>
         <a href="/admin/r/category/new" class="adm-btn adm-btn-primary">+ Add Category</a>
         <a href="/admin/r/branch/new" class="adm-btn adm-btn-primary">+ Add Branch</a>
         <a href="/admin/r/user/new" class="adm-btn adm-btn-ghost">+ Add User</a>
-        <a href="/admin/settings" class="adm-btn adm-btn-ghost">⚙️ Settings</a>
+        <a href="/admin/settings" class="adm-btn adm-btn-ghost" style="display:inline-flex;align-items:center;gap:4px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon="hero-cog-6-tooth" class="w-4 h-4" />
+          Settings
+        </a>
       </div>
     </div>
     """

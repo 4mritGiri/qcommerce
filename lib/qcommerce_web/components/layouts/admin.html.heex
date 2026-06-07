@@ -410,11 +410,11 @@
           <div class="adm-nav-group">
             <div class="adm-nav-group-label">Overview</div>
             <a href="/admin" class={"adm-nav-link #{if assigns[:admin_section] == :dashboard, do: "active"}"}>
-              <QcommerceWeb.Layouts.sidebar_icon icon="🏠" />
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-home" />
               <span class="lbl">Dashboard</span>
             </a>
             <a href="/admin/settings" class={"adm-nav-link #{if assigns[:admin_section] == :settings, do: "active"}"}>
-              <QcommerceWeb.Layouts.sidebar_icon icon="⚙️" />
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-cog-6-tooth" />
               <span class="lbl">Settings</span>
             </a>
           </div>
@@ -465,7 +465,7 @@
                   <% end %>
                   <span class="sep">›</span>
                 <% end %>
-              <%= end %>
+              <% end %>
             </div>
           </div>
           <div class="adm-topbar-right">

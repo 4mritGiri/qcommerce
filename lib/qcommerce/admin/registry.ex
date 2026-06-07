@@ -74,7 +74,7 @@ defmodule Qcommerce.Admin.Registry do
           context:         Keyword.fetch!(unquote(opts), :context),
           label:           Keyword.get(unquote(opts), :label, "Records"),
           group:           Keyword.get(unquote(opts), :group, "General"),
-          icon:            Keyword.get(unquote(opts), :icon, "📋"),
+          icon:            Keyword.get(unquote(opts), :icon, "hero-document"),
           list_fields:     Keyword.get(unquote(opts), :list_fields, [:id, :inserted_at]),
           search_fields:   Keyword.get(unquote(opts), :search_fields, []),
           readonly_fields: Keyword.get(unquote(opts), :readonly_fields, [:id, :inserted_at, :updated_at]),

@@ -11,7 +11,7 @@ defmodule Qcommerce.Admin.ProductAdmin do
     context:         Qcommerce.Catalog,
     label:           "Products",
     group:           "Catalog",
-    icon:            "📦",
+    icon:            "product",
     list_fields:     [:id, :name, :sku, :base_price, :unit, :is_active, :inserted_at],
     search_fields:   [:name, :sku],
     readonly_fields: [:id, :inserted_at, :updated_at]
@@ -23,7 +23,7 @@ defmodule Qcommerce.Admin.CategoryAdmin do
     context:         Qcommerce.Catalog,
     label:           "Categories",
     group:           "Catalog",
-    icon:            "🏷️",
+    icon:            "hero-tag",
     list_fields:     [:id, :name, :slug, :sort_order, :is_active],
     search_fields:   [:name, :slug],
     readonly_fields: [:id, :inserted_at]
@@ -35,7 +35,7 @@ defmodule Qcommerce.Admin.SlideAdmin do
     context:         Qcommerce.Catalog,
     label:           "Hero Slides",
     group:           "Catalog",
-    icon:            "🖼️",
+    icon:            "hero-photo",
     list_fields:     [:id, :tag, :heading, :position, :is_active],
     search_fields:   [:tag, :heading],
     readonly_fields: [:id, :inserted_at]
@@ -47,7 +47,7 @@ defmodule Qcommerce.Admin.FlashSaleAdmin do
     context:         Qcommerce.Catalog,
     label:           "Flash Sales",
     group:           "Catalog",
-    icon:            "⚡",
+    icon:            "hero-bolt",
     list_fields:     [:id, :label, :discount_pct, :ends_at, :is_active],
     search_fields:   [:label],
     readonly_fields: [:id, :inserted_at]
@@ -63,7 +63,7 @@ defmodule Qcommerce.Admin.UserAdmin do
     context:         Qcommerce.Accounts,
     label:           "Users",
     group:           "Accounts",
-    icon:            "👤",
+    icon:            "hero-user",
     list_fields:     [:id, :full_name, :email, :phone, :role, :is_active, :inserted_at],
     search_fields:   [:full_name, :email, :phone],
     # password_hash must never appear in the edit form
@@ -80,7 +80,7 @@ defmodule Qcommerce.Admin.BranchAdmin do
     context:         Qcommerce.Platform,
     label:           "Branches",
     group:           "Platform",
-    icon:            "🏪",
+    icon:            "hero-building-storefront",
     list_fields:     [:id, :code, :name, :city, :catchment_radius_m, :is_active],
     search_fields:   [:name, :code, :city],
     # location is a Geo.Point — not editable via text input
@@ -97,7 +97,7 @@ defmodule Qcommerce.Admin.OrderAdmin do
     context:         Qcommerce.Orders,
     label:           "Orders",
     group:           "Orders",
-    icon:            "🛒",
+    icon:            "hero-shopping-cart",
     list_fields:     [:id, :status, :total_amount, :placed_at, :delivered_at],
     search_fields:   [],
     # Orders are read-only in admin — mutations go through the Orders pipeline
@@ -114,7 +114,7 @@ defmodule Qcommerce.Admin.OrderItemAdmin do
     context:         Qcommerce.Orders,
     label:           "Order Items",
     group:           "Orders",
-    icon:            "🧾",
+    icon:            "hero-document-text",
     list_fields:     [:id, :order_id, :quantity, :unit_price, :line_total, :status],
     search_fields:   [],
     actions:         [:show],
@@ -131,7 +131,7 @@ defmodule Qcommerce.Admin.RiderAdmin do
     context:         Qcommerce.Delivery,
     label:           "Riders",
     group:           "Delivery",
-    icon:            "🏍️",
+    icon:            "hero-truck",
     list_fields:     [:id, :user_id, :vehicle_type, :license_number, :status, :inserted_at],
     search_fields:   [:license_number],
     # current_location is a Geo.Point
@@ -148,7 +148,7 @@ defmodule Qcommerce.Admin.BranchInventoryAdmin do
     context:         Qcommerce.Inventory,
     label:           "Branch Inventory",
     group:           "Inventory",
-    icon:            "📊",
+    icon:            "hero-chart-bar",
     list_fields:     [:id, :branch_id, :product_id, :selling_price, :quantity_on_hand, :is_available],
     search_fields:   [],
     readonly_fields: [:id, :updated_at]
@@ -164,7 +164,7 @@ defmodule Qcommerce.Admin.AccountAdmin do
     context:         Qcommerce.Ledger,
     label:           "Chart of Accounts",
     group:           "Ledger",
-    icon:            "📒",
+    icon:            "hero-book-open",
     list_fields:     [:id, :code, :name, :account_type, :normal_balance, :shard_count, :is_active],
     search_fields:   [:name, :code],
     readonly_fields: [:id, :inserted_at, :updated_at]
@@ -176,7 +176,7 @@ defmodule Qcommerce.Admin.JournalAdmin do
     context:         Qcommerce.Ledger,
     label:           "Journals",
     group:           "Ledger",
-    icon:            "📔",
+    icon:            "hero-clipboard-document-list",
     list_fields:     [:id, :branch_id, :fiscal_year_id, :description, :posted_at],
     search_fields:   [:description],
     actions:         [:show],

@@ -599,7 +599,7 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     end
   end
 
-  defp current_path(socket, extra_params \\ %{}) do
+  defp current_path(socket, extra_params) do
     slug = socket.assigns.resource_slug
     q = socket.assigns.search
     page = socket.assigns.page
@@ -646,7 +646,10 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     ~H"""
     <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
       <div>
-        <h1 class="adm-page-title"><%= @config.icon %> <%= @config.label %></h1>
+        <h1 class="adm-page-title" style="display:inline-flex;align-items:center;gap:8px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon={@config.icon} class="w-6 h-6" />
+          <%= @config.label %>
+        </h1>
         <p class="adm-page-sub">
           <%= @total %> records total
           <%= if map_size(@filters) > 0 do %><span style="color:var(--adm-accent2);margin-left:6px;">· <%= map_size(@filters) %> filter(s) active</span><% end %>
@@ -894,7 +897,10 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     ~H"""
     <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
       <div>
-        <h1 class="adm-page-title"><%= @config.icon %> <%= @config.label %> #<%= @record && @record.id %></h1>
+        <h1 class="adm-page-title" style="display:inline-flex;align-items:center;gap:8px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon={@config.icon} class="w-6 h-6" />
+          <%= @config.label %> #<%= @record && @record.id %>
+        </h1>
         <p class="adm-page-sub">Viewing record details</p>
       </div>
       <div style="display:flex;gap:8px;">
@@ -948,11 +954,13 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     ~H"""
     <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
       <div>
-        <h1 class="adm-page-title">
+        <h1 class="adm-page-title" style="display:inline-flex;align-items:center;gap:8px;">
           <%= if @form_mode == :new do %>
-            + New <%= @config.label |> String.replace(~r/s$/, "") %>
+            <QcommerceWeb.Layouts.sidebar_icon icon="hero-plus-circle" class="w-6 h-6" />
+            New <%= @config.label |> String.replace(~r/s$/, "") %>
           <% else %>
-            ✏️ Edit <%= @config.label %> #<%= @record && @record.id %>
+            <QcommerceWeb.Layouts.sidebar_icon icon="hero-pencil-square" class="w-6 h-6" />
+            Edit <%= @config.label %> #<%= @record && @record.id %>
           <% end %>
         </h1>
         <p class="adm-page-sub"><%= @config.label %> · <%= inspect(@config.schema) %></p>
