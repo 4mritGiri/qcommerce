@@ -53,12 +53,6 @@ defmodule QcommerceWeb.Admin.DashboardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <!-- Page header -->
-    <div class="adm-page-header">
-      <h1 class="adm-page-title">Dashboard</h1>
-      <p class="adm-page-sub">Welcome back, <%= @current_user.full_name %>. Here's your store overview.</p>
-    </div>
-
     <!-- Stat tiles -->
     <div class="adm-stats">
       <div class="adm-stat">

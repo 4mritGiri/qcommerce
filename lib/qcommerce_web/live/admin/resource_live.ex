@@ -104,6 +104,12 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     filter_opts = fetch_filter_options(config.schema)
     slug = socket.assigns.resource_slug
 
+    # Preserve any existing open/search state, initialising fresh keys for new fields
+    existing_open   = socket.assigns[:filter_open]   || %{}
+    existing_search = socket.assigns[:filter_search] || %{}
+    filter_open   = Map.new(filter_opts, fn {k, _} -> {k, Map.get(existing_open, k, false)} end)
+    filter_search = Map.new(filter_opts, fn {k, _} -> {k, Map.get(existing_search, k, "")} end)
+
     socket
     |> assign(:page_title, config.label)
     |> assign(:breadcrumb, [{"Admin", "/admin"}, {config.label, nil}])
@@ -112,6 +118,8 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     |> assign(:total_pages, max(1, ceil(total / @per_page)))
     |> assign(:list_fields, FieldHelper.fields_for(config.schema, config.list_fields))
     |> assign(:filter_options, filter_opts)
+    |> assign(:filter_open, filter_open)
+    |> assign(:filter_search, filter_search)
     |> assign(:selected_ids, [])
     |> assign(:resource_slug, slug)
   end
@@ -342,7 +350,22 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     {:noreply, push_patch(socket, to: path)}
   end
 
-  def handle_event("filter_select", %{"field" => field_name, "value" => val}, socket) do
+  # Close all filters then toggle the one requested
+  def handle_event("filter_toggle", %{"field" => field_name}, socket) do
+    current = Map.get(socket.assigns.filter_open, field_name, false)
+    # close all first, then toggle the target
+    new_open = socket.assigns.filter_open
+               |> Map.new(fn {k, _} -> {k, false} end)
+               |> Map.put(field_name, !current)
+    {:noreply, assign(socket, :filter_open, new_open)}
+  end
+
+  def handle_event("filter_search", %{"field" => field_name, "value" => q}, socket) do
+    new_search = Map.put(socket.assigns.filter_search, field_name, q)
+    {:noreply, assign(socket, :filter_search, new_search)}
+  end
+
+  def handle_event("filter_pick", %{"field" => field_name, "value" => val}, socket) do
     new_filters =
       if val == "" do
         Map.delete(socket.assigns.filters, field_name)
@@ -350,17 +373,32 @@ defmodule QcommerceWeb.Admin.ResourceLive do
         Map.put(socket.assigns.filters, field_name, val)
       end
 
-    slug = socket.assigns.resource_slug
-    q = socket.assigns.search
-    sort_by = socket.assigns.sort_by
+    # Close the dropdown and clear its search
+    new_open   = Map.put(socket.assigns.filter_open,   field_name, false)
+    new_search = Map.put(socket.assigns.filter_search, field_name, "")
+
+    slug     = socket.assigns.resource_slug
+    sort_by  = socket.assigns.sort_by
     sort_dir = socket.assigns.sort_dir
+    q        = socket.assigns.search
 
     query_params =
       %{"q" => q, "page" => "1", "sort_by" => sort_by, "sort_dir" => sort_dir}
       |> Map.merge(new_filters)
       |> URI.encode_query()
 
+    socket =
+      socket
+      |> assign(:filter_open, new_open)
+      |> assign(:filter_search, new_search)
+      |> assign(:filters, new_filters)
+
     {:noreply, push_patch(socket, to: "/admin/r/#{slug}?#{query_params}")}
+  end
+
+  # Legacy — kept so existing plain-select forms still work
+  def handle_event("filter_select", %{"field" => field_name, "value" => val}, socket) do
+    handle_event("filter_pick", %{"field" => field_name, "value" => val}, socket)
   end
 
   def handle_event("toggle_select", %{"id" => id}, socket) do
@@ -631,15 +669,83 @@ defmodule QcommerceWeb.Admin.ResourceLive do
           </div>
         </form>
 
+        <%# ── Select2-style filter pills ───────────────────────────── %>
         <%= for {field_name, opts} <- @filter_options do %>
-          <% current_val = Map.get(@filters, field_name, "") %>
-          <select class="adm-select" style="height:34px;min-width:110px;font-size:12px;"
-            phx-change="filter_select" phx-value-field={field_name}>
-            <option value=""><%= Qcommerce.Admin.FieldHelper.humanize(field_name) %>: All</option>
-            <%= for {label, val} <- opts do %>
-              <option value={val} selected={val == current_val}><%= label %></option>
+          <% is_open    = Map.get(@filter_open,   field_name, false) %>
+          <% search_q   = Map.get(@filter_search,  field_name, "") %>
+          <% active_val = Map.get(@filters,        field_name, "") %>
+          <% field_label = Qcommerce.Admin.FieldHelper.humanize(field_name) %>
+          <% active_label = if active_val != "",
+              do: (Enum.find_value(opts, active_val, fn {l, v} -> if v == active_val, do: l end)),
+              else: nil %>
+
+          <div style="position:relative;z-index:#{if is_open, do: 200, else: 10};">
+            <%# Pill trigger %>
+            <button type="button"
+              phx-click="filter_toggle" phx-value-field={field_name}
+              style={"display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;
+                      border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+                      border:1px solid #{if active_val != "", do: "var(--adm-accent)", else: "var(--adm-border)"};
+                      background:#{if active_val != "", do: "rgba(99,102,241,.15)", else: "var(--adm-card)"};
+                      color:#{if active_val != "", do: "var(--adm-accent2)", else: "var(--adm-text2)"};
+                      white-space:nowrap;transition:all .15s;"}>
+              <%= field_label %>
+              <%= if active_label do %>
+                <span style="background:var(--adm-accent);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;">
+                  <%= active_label %>
+                </span>
+              <% end %>
+              <span style="font-size:10px;opacity:.6;"><%= if is_open, do: "▴", else: "▾" %></span>
+            </button>
+
+            <%# Dropdown panel %>
+            <%= if is_open do %>
+              <div style="position:absolute;top:calc(100% + 6px);left:0;min-width:200px;
+                          background:var(--adm-card);border:1px solid var(--adm-border);
+                          border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+                          overflow:hidden;">
+                <%# Search input %>
+                <div style="padding:8px 8px 4px;">
+                  <div style="position:relative;">
+                    <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--adm-text3);font-size:12px;">🔍</span>
+                    <input type="text" value={search_q}
+                      placeholder={"Search #{field_label}…"}
+                      phx-keyup="filter_search" phx-value-field={field_name} phx-debounce="150"
+                      style="width:100%;background:var(--adm-surface);border:1px solid var(--adm-border);
+                             border-radius:7px;color:var(--adm-text);padding:6px 10px 6px 30px;
+                             font-size:12px;outline:none;" />
+                  </div>
+                </div>
+
+                <%# Option list %>
+                <div style="max-height:200px;overflow-y:auto;padding:4px 4px 6px;">
+                  <%# "All / Clear" option %>
+                  <div phx-click="filter_pick" phx-value-field={field_name} phx-value-value=""
+                    style={"cursor:pointer;padding:7px 12px;border-radius:7px;font-size:12px;
+                            color:#{if active_val == "", do: "var(--adm-accent2)", else: "var(--adm-text3)"};
+                            background:#{if active_val == "", do: "rgba(99,102,241,.12)", else: "transparent"};
+                            display:flex;align-items:center;gap:6px;"}>
+                    <span style="width:14px;text-align:center;"><%= if active_val == "", do: "✓", else: "" %></span>
+                    All <%= field_label %>
+                  </div>
+
+                  <%= for {label, val} <- Enum.filter(opts, fn {l, _} ->
+                        search_q == "" or String.contains?(String.downcase(l), String.downcase(search_q))
+                      end) do %>
+                    <div phx-click="filter_pick" phx-value-field={field_name} phx-value-value={val}
+                      style={"cursor:pointer;padding:7px 12px;border-radius:7px;font-size:12px;
+                              color:#{if val == active_val, do: "var(--adm-accent2)", else: "var(--adm-text2)"};
+                              background:#{if val == active_val, do: "rgba(99,102,241,.12)", else: "transparent"};
+                              display:flex;align-items:center;gap:6px;transition:background .1s;"}
+                      class="adm-autocomplete-option">
+                      <span style="width:14px;text-align:center;"><%= if val == active_val, do: "✓", else: "" %></span>
+                      <%= label %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
             <% end %>
-          </select>
+          </div>
         <% end %>
 
         <div class="adm-spacer"></div>
