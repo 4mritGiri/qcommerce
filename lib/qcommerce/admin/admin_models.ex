@@ -36,7 +36,6 @@ defmodule Qcommerce.Admin.SlideAdmin do
     label:           "Hero Slides",
     group:           "Catalog",
     icon:            "🖼️",
-    # Fixed: was :title (doesn't exist), correct fields are :tag and :heading
     list_fields:     [:id, :tag, :heading, :position, :is_active],
     search_fields:   [:tag, :heading],
     readonly_fields: [:id, :inserted_at]
