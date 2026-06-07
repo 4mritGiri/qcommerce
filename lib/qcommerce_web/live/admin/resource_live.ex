@@ -751,16 +751,18 @@ defmodule QcommerceWeb.Admin.ResourceLive do
         <div class="adm-spacer"></div>
 
         <%= if @selected_ids != [] do %>
-          <span style="font-size:12px;color:var(--adm-accent2);font-weight:600;"><%= length(@selected_ids) %> selected</span>
-          <form phx-submit="bulk_action" style="display:contents;">
-            <select name="action" class="adm-select" style="height:34px;font-size:12px;">
-              <option value="">— Action —</option>
-              <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
-                <option value="delete">Delete selected</option>
-              <% end %>
-            </select>
-            <button type="submit" class="adm-btn adm-btn-danger" style="height:34px;">Apply</button>
-          </form>
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);padding:3px 10px;border-radius:20px;margin-right:8px;">
+            <span style="font-size:11.5px;color:#f87171;font-weight:600;white-space:nowrap;"><%= length(@selected_ids) %> selected</span>
+            <form phx-submit="bulk_action" style="display:flex;align-items:center;gap:6px;margin:0;">
+              <select name="action" class="adm-select" style="height:26px;font-size:11px;width:auto;min-width:130px;padding:2px 8px;border-radius:14px;border-color:rgba(239,68,68,.25);background:var(--adm-surface);color:var(--adm-text);outline:none;">
+                <option value="">— Action —</option>
+                <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
+                  <option value="delete">Delete selected</option>
+                <% end %>
+              </select>
+              <button type="submit" class="adm-btn adm-btn-danger" style="height:26px;padding:0 12px;font-size:11px;border-radius:14px;border:none;">Apply</button>
+            </form>
+          </div>
         <% end %>
 
         <span style="font-size:11px;color:var(--adm-text2);">Page <%= @page %> / <%= @total_pages %></span>
