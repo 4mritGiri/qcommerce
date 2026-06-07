@@ -7,7 +7,16 @@ defmodule Qcommerce.Orders.Order do
   alias Qcommerce.Delivery.Rider
   alias Qcommerce.Orders.OrderItem
 
-  @statuses ~w(pending confirmed picking ready out_for_delivery delivered cancelled rejected)a
+  @statuses ~w(
+    pending
+    confirmed
+    picking
+    ready
+    out_for_delivery
+    delivered
+    cancelled
+    rejected
+  )a
 
   schema "orders" do
     belongs_to :user, User
@@ -54,6 +63,8 @@ defmodule Qcommerce.Orders.Order do
     |> assoc_constraint(:branch)
     |> assoc_constraint(:address)
   end
+
+  def statuses, do: @statuses
 
   def status_changeset(order, status, extra_attrs \\ %{}) when status in @statuses do
     order

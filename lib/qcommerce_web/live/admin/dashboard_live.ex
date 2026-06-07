@@ -84,19 +84,15 @@ defmodule QcommerceWeb.Admin.DashboardLive do
     end)
 
     # Order status distribution
-    statuses = [
-      :pending,
-      :confirmed,
-      :picking,
-      :ready,
-      :out_for_delivery,
-      :delivered,
-      :cancelled,
-      :rejected
-    ]
-    status_counts = Enum.map(statuses, fn s ->
-      Repo.aggregate(from(o in Order, where: o.status == ^s), :count)
-    end)
+    statuses = Order.statuses()
+
+    status_counts =
+      Enum.map(statuses, fn status ->
+        Repo.aggregate(
+          from(o in Order, where: o.status == ^status),
+          :count
+        )
+      end)
 
     %{
       orders_trend: %{
