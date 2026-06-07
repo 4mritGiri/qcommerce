@@ -5,10 +5,10 @@ import Config
 # NOTE: types: is set in config.exs — do NOT repeat it here
 # =============================================================================
 config :qcommerce, Qcommerce.Repo,
-  username: "postgres",
-  password: "123456",
-  hostname: "localhost",
-  database: "qcommerce_dev",
+  username: System.get_env("DATABASE_USER") || "postgres",
+  password: System.get_env("DATABASE_PASSWORD") || "123456",
+  hostname: System.get_env("DATABASE_HOST") || "localhost",
+  database: System.get_env("DATABASE_DB") || "qcommerce_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

@@ -130,7 +130,14 @@ defmodule Qcommerce.MixProject do
         "tailwind qcommerce --minify",
         "esbuild qcommerce --minify",
         "phx.digest"
-      ]
+      ],
+      # Docker Compose shortcuts
+      "docker.dev": ["cmd docker compose up --build"],
+      "docker.prod": ["cmd docker compose -f compose.prod.yaml up --build -d"],
+      "docker.down": ["cmd docker compose down && docker compose -f compose.prod.yaml down"],
+      "docker-dev": ["docker.dev"],
+      "docker-prod": ["docker.prod"],
+      "docker-down": ["docker.down"]
     ]
   end
 end

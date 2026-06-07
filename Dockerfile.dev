@@ -1,0 +1,27 @@
+ARG ELIXIR_VERSION=1.17.3
+ARG OTP_VERSION=27.3.4.12
+ARG DEBIAN_VERSION=trixie-20260518-slim
+
+FROM docker.io/hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}
+
+# Install build dependencies + inotify-tools for live reload
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    inotify-tools \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install hex + rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+# Copy dev entrypoint
+COPY entrypoint.dev.sh /usr/local/bin/entrypoint.dev.sh
+RUN chmod +x /usr/local/bin/entrypoint.dev.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.dev.sh"]
+
+CMD ["mix", "phx.server"]
