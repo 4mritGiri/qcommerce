@@ -132,7 +132,7 @@ defmodule Qcommerce.MixProject do
         "phx.digest"
       ],
       # Docker Compose shortcuts
-      "docker.dev": ["cmd docker compose up --build"],
+      "docker.dev": ["cmd docker compose up"],
       "docker.prod": ["cmd docker compose -f compose.prod.yaml up --build -d"],
       "docker.down": ["cmd docker compose down && docker compose -f compose.prod.yaml down"],
       "docker-dev": ["docker.dev"],

@@ -26,8 +26,7 @@ services:
       - "traefik.http.routers.qcommerce-dev.rule=${HOSTS:-Host(`qcommerce.localhost`)}"
       - "traefik.http.services.qcommerce-dev.loadbalancer.server.port=4000"
       - "traefik.http.routers.qcommerce-dev.entrypoints=web,websecure"
-      - "traefik.http.routers.qcommerce-dev.tls=true"
-      - "traefik.http.routers.qcommerce-dev.tls.certresolver=myresolver"
+      - "traefik.http.routers.qcommerce-dev.tls=false"
 
 networks:
   traefik-net:
