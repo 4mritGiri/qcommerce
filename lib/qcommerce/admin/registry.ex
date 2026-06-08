@@ -23,6 +23,7 @@ defmodule Qcommerce.Admin.Registry do
     Qcommerce.Admin.CategoryAdmin,
     Qcommerce.Admin.SlideAdmin,
     Qcommerce.Admin.FlashSaleAdmin,
+    Qcommerce.Admin.CartShareAdmin,
     Qcommerce.Admin.UserAdmin,
     Qcommerce.Admin.BranchAdmin,
     Qcommerce.Admin.OrderAdmin,

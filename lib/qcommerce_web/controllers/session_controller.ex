@@ -70,25 +70,40 @@ defmodule QcommerceWeb.SessionController do
   # Phone OTP login
   # ---------------------------------------------------------------------------
 
-  def login_phone(conn, %{"phone" => phone}) do
+  def login_phone(conn, %{"phone" => raw_phone}) do
+    phone =
+      raw_phone
+      |> String.trim()
+
     user =
-      case Qcommerce.Repo.get_by(Qcommerce.Accounts.User, phone: phone) do
+      case Repo.get_by(User, phone: phone) do
         nil ->
-          digits    = Regex.replace(~r/\D/, phone, "") |> String.slice(-4..-1)
-          random_id = :crypto.strong_rand_bytes(4) |> Base.hex_encode32(case: :lower) |> String.slice(0..5)
+          digits =
+            phone
+            |> Regex.replace(~r/\D/, "")
+            |> String.slice(-4, 4)
 
-          {:ok, new_user} =
-            Accounts.create_user(%{
-              "email"     => "phone_#{random_id}@qcommerce.com",
-              "phone"     => phone,
-              "full_name" => "Customer #{digits}",
-              "password"  => "phone_pass_#{random_id}_!",
-              "role"      => "customer"
-            })
-          new_user
+          random_id =
+            :crypto.strong_rand_bytes(4)
+            |> Base.hex_encode32(case: :lower)
+            |> String.slice(0, 6)
 
-        existing ->
-          existing
+          case Accounts.create_user(%{
+                "email" => "phone_#{random_id}@qcommerce.com",
+                "phone" => phone,
+                "full_name" => "Customer #{digits}",
+                "password" => "phone_pass_#{random_id}_!",
+                "role" => "customer"
+              }) do
+            {:ok, user} ->
+              user
+
+            {:error, error} ->
+              raise "Phone user creation failed: #{inspect(error)}"
+          end
+
+        user ->
+          user
       end
 
     conn

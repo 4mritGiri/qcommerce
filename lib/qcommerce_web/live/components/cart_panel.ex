@@ -121,7 +121,9 @@ defmodule QcommerceWeb.Live.Components.CartPanel do
             cart_items={@cart_items}
             share_url={@share_url}
             share_seconds_left={@share_seconds_left}
-            show_share_qr={@show_share_qr} />
+            show_share_qr={@show_share_qr}
+            cart_count={@cart_count}
+            cart_total={@cart_total} />
 
         <%!-- ══ VIEW B — CART ITEMS ══ --%>
         <% else %>
@@ -146,8 +148,13 @@ defmodule QcommerceWeb.Live.Components.CartPanel do
   attr :share_url,         :string, default: nil
   attr :share_seconds_left, :integer, default: 0
   attr :show_share_qr,     :boolean, default: false
+  attr :cart_count, :integer, required: true
+  attr :cart_total, :any, required: true
 
   defp share_panel(assigns) do
+    assigns = assign(assigns, :share_message,
+    "Hi, I have created a cart with #{assigns.cart_count} items worth Rs. #{assigns.cart_total} on `QCommerce`. Please review and make the payment to place the order. #{assigns.share_url}"
+  )
     ~H"""
     <div style="flex:1;overflow-y:auto;padding:14px 16px">
       <%!-- Info notice --%>
@@ -172,22 +179,23 @@ defmodule QcommerceWeb.Live.Components.CartPanel do
       <% end %>
 
       <%!-- Share channels --%>
+
       <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Share via</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-        <a href={"https://wa.me/?text=#{URI.encode("Here's my cart: #{@share_url}")}"}
+        <a href={"https://wa.me/?text=#{URI.encode(@share_message)}"}
            target="_blank"
            style="padding:10px 8px;border:1.5px solid #e5e7eb;border-radius:8px;background:#f9fafb;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:#374151;text-decoration:none"
            onmouseover="this.style.borderColor='#16a34a';this.style.color='#16a34a'"
            onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">
           <span style="font-size:20px">💬</span>WhatsApp
         </a>
-        <a href={"sms:?body=#{URI.encode("Check my QCommerce cart: #{@share_url}")}"}
+        <a href={"sms:?body=#{URI.encode(@share_message)}"}
            style="padding:10px 8px;border:1.5px solid #e5e7eb;border-radius:8px;background:#f9fafb;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:#374151;text-decoration:none"
            onmouseover="this.style.borderColor='#16a34a';this.style.color='#16a34a'"
            onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">
           <span style="font-size:20px">📱</span>SMS
         </a>
-        <a href={"mailto:?subject=My QCommerce cart&body=#{URI.encode("Here's my cart: #{@share_url}")}"}
+        <a href={"mailto:?subject=My QCommerce cart&body=#{URI.encode(@share_message)}"}
            style="padding:10px 8px;border:1.5px solid #e5e7eb;border-radius:8px;background:#f9fafb;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:#374151;text-decoration:none"
            onmouseover="this.style.borderColor='#16a34a';this.style.color='#16a34a'"
            onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">

@@ -57,6 +57,23 @@ defmodule Qcommerce.Admin.FlashSaleAdmin do
     readonly_fields: [:id, :inserted_at]
 end
 
+
+# ---------------------------------------------------------------------------
+# Cart and Cart Share
+# ---------------------------------------------------------------------------
+defmodule Qcommerce.Admin.CartShareAdmin do
+  use Qcommerce.Admin.Registry,
+    schema:          Qcommerce.Cart.CartShare,
+    context:         Qcommerce.Cart,
+    label:           "Cart Shares",
+    group:           "Carts & Orders",
+    icon:            "shopping-cart-share",
+    roles:           [:super_admin, :manager],
+    list_fields:     [:id, :token, :user_id, :inserted_at],
+    search_fields:   [:token],
+    readonly_fields: [:id, :user_id, :token, :inserted_at, :updated_at]
+end
+
 # ---------------------------------------------------------------------------
 # Accounts
 # ---------------------------------------------------------------------------
