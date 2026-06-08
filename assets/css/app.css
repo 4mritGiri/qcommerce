@@ -35,6 +35,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-si
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 
+#flash-info {z-index: 999; top: 10px;}
+
 /* ────────── NAVBAR ────────── */
 .nav{position:sticky;top:0;z-index:200;background:#fff;border-bottom:1px solid var(--border);height:var(--nav-h);display:flex;align-items:center;gap:16px;padding:0 clamp(12px,4vw,32px)}
 .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0}

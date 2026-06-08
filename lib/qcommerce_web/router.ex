@@ -59,6 +59,9 @@ defmodule QcommerceWeb.Router do
     live "/", HomeLive, :index
     live "/search", HomeLive, :search
 
+    live "/cart/share/:token", CartShareLive, :index
+
+
     # Authentication routes (handled by SessionController)
     post "/session/login", SessionController, :login
     post "/session/signup", SessionController, :signup

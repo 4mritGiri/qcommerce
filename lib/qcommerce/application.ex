@@ -18,7 +18,8 @@ defmodule Qcommerce.Application do
       # {Qcommerce.Worker, arg},
       # Start to serve requests, typically the last entry
       QcommerceWeb.Endpoint,
-      Qcommerce.Delivery.RiderTracker
+      Qcommerce.Delivery.RiderTracker,
+      Qcommerce.CartSharePruner,
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -41,4 +42,30 @@ defmodule Qcommerce.Application do
     QcommerceWeb.Endpoint.config_change(changed, removed)
     :ok
   end
+end
+
+
+defmodule Qcommerce.CartSharePruner do
+  use GenServer
+  require Logger
+
+  @interval_ms 60 * 60 * 1_000   # every hour
+
+  def start_link(_), do: GenServer.start_link(__MODULE__, [], name: __MODULE__)
+
+  @impl true
+  def init(_) do
+    schedule()
+    {:ok, []}
+  end
+
+  @impl true
+  def handle_info(:prune, state) do
+    {:ok, n} = Qcommerce.Cart.prune_expired_shares()
+    if n > 0, do: require(Logger); Logger.info("[CartSharePruner] pruned #{n} expired shares")
+    schedule()
+    {:noreply, state}
+  end
+
+  defp schedule, do: Process.send_after(self(), :prune, @interval_ms)
 end

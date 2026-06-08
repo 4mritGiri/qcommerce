@@ -1,0 +1,85 @@
+<%!-- lib/qcommerce_web/live/cart_share_live.html.heex --%>
+
+<div style="min-height:100vh;background:#f9fafb;display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif">
+    <%= if @error == :not_found do %>
+      <div style="text-align:center;max-width:340px">
+        <div style="font-size:3rem;margin-bottom:12px">🔍</div>
+        <h2 style="font-size:18px;font-weight:700;color:#111827;margin-bottom:6px">Link not found</h2>
+        <p style="font-size:14px;color:#6b7280;margin-bottom:20px">This share link doesn't exist or has been removed.</p>
+        <a href="/" style="display:inline-block;padding:10px 24px;background:#16a34a;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600">Go to QCommerce →</a>
+      </div>
+    <% end %>
+    <%= if @error == :expired do %>
+      <div style="text-align:center;max-width:340px">
+        <div style="font-size:3rem;margin-bottom:12px">⏰</div>
+        <h2 style="font-size:18px;font-weight:700;color:#111827;margin-bottom:6px">Link expired</h2>
+        <p style="font-size:14px;color:#6b7280;margin-bottom:20px">This cart share link has expired. Ask the sender to share again.</p>
+        <a href="/" style="display:inline-block;padding:10px 24px;background:#16a34a;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600">Shop fresh →</a>
+      </div>
+    <% end %>
+      <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.1);overflow:hidden">
+
+        <%!-- Header --%>
+        <div style="padding:20px 20px 14px;border-bottom:1px solid #e5e7eb">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="width:32px;height:32px;background:#16a34a;border-radius:8px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">Q</div>
+            <span style="font-size:14px;font-weight:700;color:#111827">QCommerce</span>
+          </div>
+          <h1 style="font-size:18px;font-weight:800;color:#111827;margin:8px 0 4px">Items shared with you!</h1>
+          <p style="font-size:13px;color:#6b7280">Add all to your cart and checkout in under 10 minutes.</p>
+        </div>
+
+        <%!-- Countdown strip --%>
+        <div style={"padding:8px 20px;font-size:12px;display:flex;align-items:center;justify-content:space-between;#{if @seconds_left < 300, do: "background:#fef3c7;color:#92400e", else: "background:#dcfce7;color:#166534"}"}>
+          <span>⏱ Link expires in</span>
+          <strong><%= format_countdown(@seconds_left) %></strong>
+        </div>
+
+        <%!-- Item list --%>
+        <div style="padding:12px 20px">
+          <%= for {_pid, item} <- @items do %>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f3f4f6">
+              <div style="width:44px;height:44px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                <%= item.emoji %>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= item.name %></div>
+                <div style="font-size:12px;color:#6b7280;margin-top:2px">
+                  Rs. <%= Decimal.to_string(item.price) %> × <%= item.qty %>
+                </div>
+              </div>
+              <div style="font-size:13px;font-weight:700;color:#16a34a;flex-shrink:0">
+                Rs. <%= item.price |> Decimal.mult(Decimal.new(item.qty)) |> Decimal.round(0) |> Decimal.to_string() %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <%!-- Total --%>
+        <div style="padding:4px 20px 14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:11px;color:#6b7280"><%= map_size(@items) %> items · Free delivery</div>
+            <div style="font-size:20px;font-weight:800;color:#111827">
+              Rs. <%= @share.total |> Decimal.round(0) |> Decimal.to_string() %>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:#6b7280">Viewed</div>
+            <div style="font-size:15px;font-weight:700;color:#111827"><%= @share.view_count %> times</div>
+          </div>
+        </div>
+
+        <%!-- CTA --%>
+        <div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;gap:8px">
+          <button phx-click="add_all_to_cart"
+            style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">
+            🛒 Add all to my cart
+          </button>
+          <a href="/"
+            style="display:block;text-align:center;padding:10px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:13px;color:#6b7280;text-decoration:none">
+            Browse QCommerce →
+          </a>
+        </div>
+
+      </div>
+</div>
