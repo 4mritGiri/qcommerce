@@ -89,12 +89,12 @@ defmodule QcommerceWeb.SessionController do
             |> String.slice(0, 6)
 
           case Accounts.create_user(%{
-                "email" => "phone_#{random_id}@qcommerce.com",
-                "phone" => phone,
-                "full_name" => "Customer #{digits}",
-                "password" => "phone_pass_#{random_id}_!",
-                "role" => "customer"
-              }) do
+                 "email" => "phone_#{random_id}@qcommerce.com",
+                 "phone" => phone,
+                 "full_name" => "Customer #{digits}",
+                 "password" => "phone_pass_#{random_id}_!",
+                 "role" => "customer"
+               }) do
             {:ok, user} ->
               user
 
@@ -164,7 +164,7 @@ defmodule QcommerceWeb.SessionController do
     with true <- is_binary(user_id) || {:error, :not_logged_in},
          {:ok, user} <- Accounts.get_user(user_id) do
       challenge = PasskeyAuth.generate_challenge()
-      options   = PasskeyAuth.registration_options(user, challenge)
+      options = PasskeyAuth.registration_options(user, challenge)
 
       conn
       |> put_session(:passkey_challenge, challenge)
@@ -185,9 +185,9 @@ defmodule QcommerceWeb.SessionController do
   Body: { credential: <PublicKeyCredential JSON>, nickname: "string" }
   """
   def passkey_register(conn, %{"credential" => credential} = params) do
-    user_id   = get_session(conn, :user_id)
+    user_id = get_session(conn, :user_id)
     challenge = get_session(conn, :passkey_challenge)
-    nickname  = params["nickname"] || "My Passkey"
+    nickname = params["nickname"] || "My Passkey"
 
     with true <- is_binary(user_id) || {:error, :not_logged_in},
          true <- is_binary(challenge) || {:error, :no_challenge},
@@ -226,16 +226,18 @@ defmodule QcommerceWeb.SessionController do
     # Optional: if email is provided, scope to that user's credentials
     user =
       case params["email"] do
-        nil   -> nil
+        nil ->
+          nil
+
         email ->
           case Accounts.get_user_by_email(email) do
             {:ok, u} -> u
-            _        -> nil
+            _ -> nil
           end
       end
 
     challenge = PasskeyAuth.generate_challenge()
-    options   = PasskeyAuth.authentication_options(challenge, user)
+    options = PasskeyAuth.authentication_options(challenge, user)
 
     conn
     |> put_session(:passkey_challenge, challenge)
@@ -278,34 +280,36 @@ defmodule QcommerceWeb.SessionController do
   Accepts the serialised WebAuthn credential, saves guest cart, verifies, logs in.
   """
   def passkey_authenticate_form(conn, %{"credential" => credential_json} = params) do
-      challenge = get_session(conn, :passkey_challenge)
+    challenge = get_session(conn, :passkey_challenge)
 
-      # Save guest cart if present
-      conn =
-        case params["guest_cart"] do
-          nil       -> conn
-          cart_json -> put_session(conn, CartSession.guest_cart_key(), cart_json)
-        end
-
-      with true <- is_binary(challenge) || {:error, :no_challenge},
-          {:ok, credential} <- Jason.decode(credential_json),
-          {:ok, user} <- PasskeyAuth.verify_authentication(credential, challenge) do
-        conn
-        |> delete_session(:passkey_challenge)
-        |> login_user(user)
-        |> put_flash(:info, "Welcome back, #{user.full_name}! (Passkey)")
-        |> redirect(to: ~p"/")
-      else
-        {:error, :no_challenge} ->
-          conn |> put_flash(:error, "Session expired. Please try again.") |> redirect(to: ~p"/")
-
-        {:error, :passkey_not_found} ->
-          conn |> put_flash(:error, "Passkey not recognised. Please register it first.") |> redirect(to: ~p"/")
-
-        _ ->
-          conn |> put_flash(:error, "Passkey authentication failed.") |> redirect(to: ~p"/")
+    # Save guest cart if present
+    conn =
+      case params["guest_cart"] do
+        nil -> conn
+        cart_json -> put_session(conn, CartSession.guest_cart_key(), cart_json)
       end
+
+    with true <- is_binary(challenge) || {:error, :no_challenge},
+         {:ok, credential} <- Jason.decode(credential_json),
+         {:ok, user} <- PasskeyAuth.verify_authentication(credential, challenge) do
+      conn
+      |> delete_session(:passkey_challenge)
+      |> login_user(user)
+      |> put_flash(:info, "Welcome back, #{user.full_name}! (Passkey)")
+      |> redirect(to: ~p"/")
+    else
+      {:error, :no_challenge} ->
+        conn |> put_flash(:error, "Session expired. Please try again.") |> redirect(to: ~p"/")
+
+      {:error, :passkey_not_found} ->
+        conn
+        |> put_flash(:error, "Passkey not recognised. Please register it first.")
+        |> redirect(to: ~p"/")
+
+      _ ->
+        conn |> put_flash(:error, "Passkey authentication failed.") |> redirect(to: ~p"/")
     end
+  end
 
   # ---------------------------------------------------------------------------
   # Private — login_user/2 (shared by all auth paths)
@@ -315,14 +319,14 @@ defmodule QcommerceWeb.SessionController do
   # then puts merged cart back so HomeLive can load it on mount.
   defp login_user(conn, user) do
     guest_cart_json = get_session(conn, CartSession.guest_cart_key())
-    _guest_cart      = CartSession.decode_cart(guest_cart_json)
+    _guest_cart = CartSession.decode_cart(guest_cart_json)
 
     conn
     |> put_session(:user_id, user.id)
-    |> put_session(:merged_guest_cart, guest_cart_json)   # HomeLive reads this on mount
+    # HomeLive reads this on mount
+    |> put_session(:merged_guest_cart, guest_cart_json)
     |> delete_session(CartSession.guest_cart_key())
   end
-
 
   @doc """
   POST /session/save_guest_cart
@@ -343,6 +347,7 @@ defmodule QcommerceWeb.SessionController do
   def save_guest_cart(conn, %{"redirect_to" => redirect_to}) do
     safe_redirect =
       if String.starts_with?(redirect_to, "/"), do: redirect_to, else: "/"
+
     conn |> redirect(to: safe_redirect)
   end
 end
