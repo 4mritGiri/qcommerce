@@ -22,14 +22,15 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import AdminChart from "./hooks/admin_chart";
+import Hooks from "./hooks/hooks";
 
-let Hooks = { AdminChart };
+const hooks = { AdminChart, ...Hooks };
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
    longPollFallbackMs: 2500,
    params: { _csrf_token: csrfToken },
-   hooks: Hooks,
+   hooks: hooks,
 });
 
 // Show progress bar on live navigation and form submits

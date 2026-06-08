@@ -69,6 +69,13 @@ defmodule QcommerceWeb.Router do
     get "/session/login_phone", SessionController, :login_phone
     get "/session/login_qr", SessionController, :login_qr
     get "/session/login_passkey", SessionController, :login_passkey
+
+    post "/session/save_guest_cart", SessionController, :save_guest_cart
+    get  "/session/passkey/registration_options", SessionController, :passkey_registration_options
+    post "/session/passkey/register", SessionController, :passkey_register
+    get  "/session/passkey/authentication_options", SessionController, :passkey_authentication_options
+    post "/session/passkey/authenticate", SessionController, :passkey_authenticate
+
   end
 
   scope "/admin", QcommerceWeb.Admin do

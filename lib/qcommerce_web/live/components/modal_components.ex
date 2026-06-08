@@ -63,6 +63,8 @@ defmodule QcommerceWeb.ModalComponents do
   attr :phone_input,      :string,  default: ""
   attr :otp_error,        :string,  default: nil
   attr :qr_countdown,     :integer, default: 30
+  attr :passkey_state, :atom, default: :idle
+  attr :current_user,     :map,     default: nil
 
   def login_modal(assigns) do
     ~H"""
@@ -77,7 +79,7 @@ defmodule QcommerceWeb.ModalComponents do
         <%= if @login_tab == :qr,      do: qr_tab(assigns) %>
         <%= if @login_tab == :phone,   do: phone_tab(assigns) %>
         <%= if @login_tab == :email,   do: email_tab(assigns) %>
-        <%= if @login_tab == :passkey, do: passkey_tab(assigns) %>
+        <%= if @login_tab == :passkey, do: passkey_tab(%{assigns | passkey_state: @passkey_state}) %>
 
         <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text2);border-top:1.5px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:6px">
           <span>No account? <a href="#" phx-click="show_signup" style="color:var(--green);font-weight:600;text-decoration:none">Sign up</a></span>
@@ -192,18 +194,67 @@ defmodule QcommerceWeb.ModalComponents do
 
   defp passkey_tab(assigns) do
     ~H"""
-    <div style="text-align:center">
-      <div style="font-size:48px;margin-bottom:12px">🔑</div>
-      <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;margin-bottom:8px">Passkey Login</h3>
-      <p style="font-size:13px;color:var(--text3);line-height:1.5;margin-bottom:24px">
-        Log in securely with fingerprint, face scan, or your device lock screen.
-      </p>
-      <button phx-click="simulate_passkey_login" class="nav-btn nav-btn-primary"
-        style="width:100%;height:44px;justify-content:center;gap:8px">
-        🛡️ Authenticate with Passkey
-      </button>
-    </div>
-    """
+      <%= if @login_tab == :passkey do %>
+        <div style="text-align:center;padding:4px 0">
+          <div style="font-size:44px;margin-bottom:8px">🔑</div>
+          <h3 style="font-family:var(--font-head);font-size:18px;font-weight:800;margin-bottom:6px">Passkey Login</h3>
+          <p style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:16px">
+            Use your device fingerprint, Face ID, or PIN — no password needed.
+          </p>
+
+          <%!-- State: idle — show the authenticate button --%>
+          <%= if @passkey_state == :idle do %>
+            <button phx-click="start_passkey_login"
+              style="width:100%;height:44px;background:#111827;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px">
+              🛡️ Login with Passkey
+            </button>
+          <% end %>
+
+          <%!-- State: waiting — spinner --%>
+          <%= if @passkey_state == :waiting do %>
+            <div style="width:100%;height:44px;background:#f3f4f6;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;color:var(--text2);margin-bottom:10px">
+              <span style="animation:spin 1s linear infinite;display:inline-block">⏳</span>
+              Waiting for your device…
+            </div>
+          <% end %>
+
+          <%!-- State: error --%>
+          <%= if @passkey_state == :error do %>
+            <div style="padding:10px 12px;background:#fee2e2;border-radius:8px;font-size:12px;color:#991b1b;margin-bottom:10px;text-align:left">
+              ⚠️ <%= @passkey_error %>
+            </div>
+            <button phx-click="start_passkey_login"
+              style="width:100%;height:40px;background:#111827;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">
+              Try again →
+            </button>
+          <% end %>
+
+          <%!-- Divider --%>
+          <div style="display:flex;align-items:center;gap:8px;margin:10px 0">
+            <div style="flex:1;height:1px;background:#e5e7eb"></div>
+            <span style="font-size:11px;color:#9ca3af">dev / demo only</span>
+            <div style="flex:1;height:1px;background:#e5e7eb"></div>
+          </div>
+
+          <%!-- Simulate passkey (dev mode — shows only when real passkey not supported) --%>
+          <button phx-click="simulate_passkey_login"
+            style="width:100%;height:36px;background:transparent;color:#9ca3af;border:1.5px dashed #e5e7eb;border-radius:8px;font-size:12px;cursor:pointer">
+            Simulate passkey login (dev)
+          </button>
+
+          <%!-- Register passkey (for already-logged-in users) --%>
+          <%= if @current_user do %>
+            <div style="margin-top:12px;padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;text-align:left">
+              Want to add a passkey to your account?
+              <button phx-click="start_passkey_register"
+                style="background:none;border:none;color:#16a34a;font-weight:700;cursor:pointer;text-decoration:underline;font-size:12px">
+                Register now
+              </button>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      """
   end
 
   # ---------------------------------------------------------------------------

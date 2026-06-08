@@ -12,6 +12,14 @@ config :cors_plug,
   headers: ["Authorization", "Content-Type"]
 
 # =============================================================================
+# Passkey / WebAuthn – RP config (app-wide; dev = localhost:4000)
+# =============================================================================
+config :qcommerce,
+  webauthn_rpid: "localhost",
+  webauthn_rp_name: "QCommerce",
+  webauthn_origin: "http://localhost:4000"
+
+# =============================================================================
 # Ecto / PostgreSQL — base repo config applied in ALL environments
 # types: must be set here (not dev.exs) so test and prod also get PostGIS types
 # =============================================================================
