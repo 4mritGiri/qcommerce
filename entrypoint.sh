@@ -17,7 +17,7 @@ attempt=1
 max_attempts=30
 
 while [ $attempt -le $max_attempts ]; do
-  if /app/bin/migrate; then
+ if /app/bin/qcommerce eval "Qcommerce.Release.migrate"; then
     success "Migrations completed successfully!"
     break
   fi
