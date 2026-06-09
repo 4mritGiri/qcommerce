@@ -64,6 +64,7 @@ defmodule QcommerceWeb do
       use Phoenix.LiveComponent
 
       unquote(html_helpers())
+      alias QcommerceWeb.Paths
     end
   end
 
@@ -92,6 +93,9 @@ defmodule QcommerceWeb do
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS
+
+      # Add this line here to support .heex templates
+      alias QcommerceWeb.Paths
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

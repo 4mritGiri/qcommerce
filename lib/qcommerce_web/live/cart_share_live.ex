@@ -5,6 +5,7 @@ defmodule QcommerceWeb.CartShareLive do
   """
   use QcommerceWeb, :live_view
 
+  alias QcommerceWeb.Paths
   alias Qcommerce.Cart
   alias Qcommerce.Cart.CartShare
 
@@ -64,10 +65,12 @@ defmodule QcommerceWeb.CartShareLive do
     # For now: redirect to home with a query param that home_live picks up
     _item_ids = items |> Map.keys() |> Enum.join(",")
 
+    query_params = %{shared_cart: socket.assigns.share.token}
+
     {:noreply,
      socket
      |> assign(:added, true)
-     |> push_navigate(to: ~p"/?shared_cart=#{socket.assigns.share.token}")}
+     |> push_navigate(to: Paths.home(query_params))}
   end
 
   # ---------------------------------------------------------------------------

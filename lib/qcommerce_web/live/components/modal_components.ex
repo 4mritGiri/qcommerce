@@ -175,7 +175,7 @@ defmodule QcommerceWeb.Live.Components.ModalComponents do
   defp email_tab(assigns) do
     ~H"""
     <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;text-align:center;margin-bottom:20px">Email Sign In</h3>
-    <form action={~p"/session/login"} method="post" style="display:flex;flex-direction:column;gap:16px">
+    <form action={Paths.session_login()} method="post" style="display:flex;flex-direction:column;gap:16px">
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <div>
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Email address</label>
@@ -276,7 +276,7 @@ defmodule QcommerceWeb.Live.Components.ModalComponents do
           <p style="font-size:13px;color:var(--text3);margin-top:2px">Get started with 10 minute delivery</p>
         </div>
 
-        <form action={~p"/session/signup"} method="post" style="display:flex;flex-direction:column;gap:14px">
+        <form action={Paths.session_signup()} method="post" style="display:flex;flex-direction:column;gap:14px">
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Full Name</label>

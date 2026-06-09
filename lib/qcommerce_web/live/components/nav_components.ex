@@ -88,7 +88,7 @@ defmodule QcommerceWeb.Live.Components.NavComponents do
           <span style="font-size:13px;font-weight:600;color:var(--text2);margin-right:4px">
             Hi, {@current_user.full_name}
           </span>
-          <form action={~p"/session/logout"} method="post" style="margin:0">
+          <form action={Paths.session_logout()} method="post" style="margin:0">
             <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
             <button type="submit" class="nav-btn nav-btn-ghost">Logout</button>
           </form>

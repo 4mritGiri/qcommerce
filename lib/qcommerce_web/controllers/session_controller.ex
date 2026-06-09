@@ -2,6 +2,7 @@
 defmodule QcommerceWeb.SessionController do
   use QcommerceWeb, :controller
 
+  alias QcommerceWeb.Paths
   alias Qcommerce.Repo
   alias Qcommerce.Accounts.User
 
@@ -19,12 +20,12 @@ defmodule QcommerceWeb.SessionController do
         conn
         |> login_user(user)
         |> put_flash(:info, "Welcome back, #{user.full_name}!")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
 
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Invalid email or password.")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
     end
   end
 
@@ -38,7 +39,7 @@ defmodule QcommerceWeb.SessionController do
         conn
         |> login_user(user)
         |> put_flash(:info, "Account created! Welcome to QCommerce 🎉")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
 
       {:error, changeset} ->
         errors =
@@ -54,7 +55,7 @@ defmodule QcommerceWeb.SessionController do
 
         conn
         |> put_flash(:error, "Registration failed: #{errors}")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
     end
   end
 
@@ -66,7 +67,7 @@ defmodule QcommerceWeb.SessionController do
     conn
     |> clear_session()
     |> put_flash(:info, "Logged out successfully.")
-    |> redirect(to: ~p"/")
+    |> redirect(to: Paths.home())
   end
 
   # ---------------------------------------------------------------------------
@@ -112,7 +113,7 @@ defmodule QcommerceWeb.SessionController do
     conn
     |> login_user(user)
     |> put_flash(:info, "Welcome, #{user.full_name}!")
-    |> redirect(to: ~p"/")
+    |> redirect(to: Paths.home())
   end
 
   # ---------------------------------------------------------------------------
@@ -124,13 +125,13 @@ defmodule QcommerceWeb.SessionController do
       nil ->
         conn
         |> put_flash(:error, "Default customer account not found. Run seeds.")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
 
       user ->
         conn
         |> login_user(user)
         |> put_flash(:info, "Welcome back! (QR login)")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
     end
   end
 
@@ -144,12 +145,12 @@ defmodule QcommerceWeb.SessionController do
         conn
         |> login_user(user)
         |> put_flash(:info, "Welcome back, #{user.full_name}! (Passkey)")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
 
       {:error, _} ->
         conn
         |> put_flash(:error, "Passkey not recognised.")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
     end
   end
 
@@ -299,18 +300,20 @@ defmodule QcommerceWeb.SessionController do
       |> delete_session(:passkey_challenge)
       |> login_user(user)
       |> put_flash(:info, "Welcome back, #{user.full_name}! (Passkey)")
-      |> redirect(to: ~p"/")
+      |> redirect(to: Paths.home())
     else
       {:error, :no_challenge} ->
-        conn |> put_flash(:error, "Session expired. Please try again.") |> redirect(to: ~p"/")
+        conn
+        |> put_flash(:error, "Session expired. Please try again.")
+        |> redirect(to: Paths.home())
 
       {:error, :passkey_not_found} ->
         conn
         |> put_flash(:error, "Passkey not recognised. Please register it first.")
-        |> redirect(to: ~p"/")
+        |> redirect(to: Paths.home())
 
       _ ->
-        conn |> put_flash(:error, "Passkey authentication failed.") |> redirect(to: ~p"/")
+        conn |> put_flash(:error, "Passkey authentication failed.") |> redirect(to: Paths.home())
     end
   end
 
