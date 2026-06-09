@@ -25,6 +25,8 @@ defmodule Qcommerce.AccountsFixtures do
   Generate a address.
   """
   def address_fixture(attrs \\ %{}) do
+    user = user_fixture()
+
     {:ok, address} =
       attrs
       |> Enum.into(%{
@@ -32,7 +34,10 @@ defmodule Qcommerce.AccountsFixtures do
         country: "some country",
         line1: "some line1"
       })
-      |> Qcommerce.Accounts.create_address()
+      
+      |> then(fn address_attrs ->
+        Qcommerce.Accounts.create_address(user, address_attrs)
+      end)
 
     address
   end

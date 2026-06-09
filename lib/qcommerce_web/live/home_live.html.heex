@@ -3,77 +3,78 @@
 <.flash_group flash={@flash} />
 
 <%!-- FLASH SALE BANNER --%>
-<QcommerceWeb.NavComponents.flash_sale_bar
-  flash_sale={@flash_sale}
-  flash_countdown={@flash_countdown} />
+<NavComponents.flash_sale_bar flash_sale={@flash_sale} flash_countdown={@flash_countdown} />
 
 <%!-- NAVBAR --%>
-<QcommerceWeb.NavComponents.navbar
+<NavComponents.navbar
   current_user={@current_user}
   selected_location={@selected_location}
   search_query={@search_query}
   search_results={@search_results}
-  cart_count={@cart_count} />
+  cart_count={@cart_count}
+/>
 
 <%!-- MOBILE NAV --%>
-<QcommerceWeb.NavComponents.mobile_nav />
+<NavComponents.mobile_nav />
 
 <div class="main">
-
   <%!-- HERO CAROUSEL --%>
-  <QcommerceWeb.CatalogComponents.carousel
-    slides={@slides}
-    current_slide={@current_slide} />
+  <CatalogComponents.carousel slides={@slides} current_slide={@current_slide} />
 
   <%!-- OFFERS STRIP --%>
-  <QcommerceWeb.CatalogComponents.offers_strip
+  <CatalogComponents.offers_strip
     flash_sale={@flash_sale}
     flash_countdown={@flash_countdown}
     coupon_code={@coupon_code}
     coupon_error={@coupon_error}
-    coupon_discount={@coupon_discount} />
+    coupon_discount={@coupon_discount}
+  />
 
   <%!-- CATEGORIES --%>
-  <QcommerceWeb.CatalogComponents.category_row categories={@categories} />
+  <CatalogComponents.category_row categories={@categories} />
 
   <%!-- POPULAR NOW --%>
-  <QcommerceWeb.CatalogComponents.product_section
+  <CatalogComponents.product_section
     title="🔥 Popular now"
     products={@popular_products}
     fallback={popular_fallback()}
-    cart_items={@cart_items} />
+    cart_items={@cart_items}
+  />
 
   <%!-- APP DOWNLOAD BANNER --%>
-  <QcommerceWeb.CatalogComponents.app_banner />
+  <CatalogComponents.app_banner />
 
   <%!-- FRESH FRUITS & VEGETABLES --%>
-  <QcommerceWeb.CatalogComponents.product_section
+  <CatalogComponents.product_section
     title="🥬 Fresh Fruits &amp; Vegetables"
     products={@fresh_products}
     fallback={fresh_fallback()}
-    cart_items={@cart_items} />
+    cart_items={@cart_items}
+  />
 
   <%!-- DAIRY & EGGS --%>
-  <QcommerceWeb.CatalogComponents.product_section
+  <CatalogComponents.product_section
     title="🥛 Dairy &amp; Eggs"
     products={@dairy_products}
     fallback={dairy_fallback()}
-    cart_items={@cart_items} />
-
-</div><%!-- .main --%>
+    cart_items={@cart_items}
+  />
+</div>
+<%!-- .main --%>
 
 <%!-- FOOTER --%>
-<QcommerceWeb.LayoutComponents.footer />
+<LayoutComponents.footer />
 
 <%!-- LOCATION MODAL --%>
-<QcommerceWeb.NavComponents.location_modal
+<NavComponents.location_modal
   show_location_modal={@show_location_modal}
   detecting_location={@detecting_location}
   location_search={@location_search}
-  location_results={@location_results} />
+  location_results={@location_results}
+/>
 
 <%!-- CART SLIDE PANEL — uses CartPanel (richer: savings, share, gift, handling fee) --%>
-<QcommerceWeb.Live.Components.CartPanel.cart_panel
+<CartPanel.cart_panel
   show_cart={@show_cart}
   cart_items={@cart_items}
   cart_count={@cart_count}
@@ -87,15 +88,14 @@
   share_token={@share_token}
   share_url={@share_url}
   share_seconds_left={@share_seconds_left}
-  show_share_qr={@show_share_qr} />
+  show_share_qr={@show_share_qr}
+/>
 
 <%!-- PRODUCT MODAL --%>
-<QcommerceWeb.ModalComponents.product_modal
-  show_modal={@show_modal}
-  selected_product={@selected_product} />
+<ModalComponents.product_modal show_modal={@show_modal} selected_product={@selected_product} />
 
 <%!-- LOGIN MODAL --%>
-<QcommerceWeb.ModalComponents.login_modal
+<ModalComponents.login_modal
   show_login_modal={@show_login_modal}
   auth_methods={@auth_methods}
   login_tab={@login_tab}
@@ -108,11 +108,10 @@
 />
 
 <%!-- SIGNUP MODAL --%>
-<QcommerceWeb.ModalComponents.signup_modal
-  show_signup_modal={@show_signup_modal} />
+<ModalComponents.signup_modal show_signup_modal={@show_signup_modal} />
 
 <%!-- GPS JS --%>
-<QcommerceWeb.CatalogComponents.gps_js />
+<CatalogComponents.gps_js />
 
 <%!-- MOBILE NAV JS --%>
-<QcommerceWeb.NavComponents.mobile_nav_js />
+<NavComponents.mobile_nav_js />

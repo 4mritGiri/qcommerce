@@ -1,5 +1,5 @@
 # lib/qcommerce_web/live/components/catalog_components.ex
-defmodule QcommerceWeb.CatalogComponents do
+defmodule QcommerceWeb.Live.Components.CatalogComponents do
   use QcommerceWeb, :html
   import Phoenix.HTML, only: [raw: 1]
 
@@ -9,15 +9,16 @@ defmodule QcommerceWeb.CatalogComponents do
   # Data helpers  (moved here from home_live.ex so components compile cleanly)
   # ---------------------------------------------------------------------------
 
-  def carousel_slides([]),       do: static_slides()
+  def carousel_slides([]), do: static_slides()
+
   def carousel_slides(db_slides) do
     Enum.map(db_slides, fn s ->
       %{
         theme: s.theme,
-        tag:   s.tag,
-        h2:    s.heading,
-        p:     s.sub,
-        cta:   s.cta_label,
+        tag: s.tag,
+        h2: s.heading,
+        p: s.sub,
+        cta: s.cta_label,
         emoji: s.emojis,
         products: Enum.map(s.products, &db_product_to_chip/1)
       }
@@ -26,36 +27,46 @@ defmodule QcommerceWeb.CatalogComponents do
 
   def category_list([]) do
     [
-      %{emoji: "🥬", name: "Vegetables"},  %{emoji: "🍎", name: "Fruits"},
-      %{emoji: "🥛", name: "Dairy & Eggs"},%{emoji: "🍞", name: "Bakery"},
-      %{emoji: "🥩", name: "Meat & Fish"}, %{emoji: "🧃", name: "Beverages"},
-      %{emoji: "🍫", name: "Snacks"},      %{emoji: "🧴", name: "Beauty"},
-      %{emoji: "🧹", name: "Cleaning"},    %{emoji: "👶", name: "Baby"},
-      %{emoji: "🐾", name: "Pet Care"},    %{emoji: "❄️",  name: "Frozen"},
-      %{emoji: "🍳", name: "Breakfast"},   %{emoji: "🌿", name: "Organic"},
+      %{emoji: "🥬", name: "Vegetables"},
+      %{emoji: "🍎", name: "Fruits"},
+      %{emoji: "🥛", name: "Dairy & Eggs"},
+      %{emoji: "🍞", name: "Bakery"},
+      %{emoji: "🥩", name: "Meat & Fish"},
+      %{emoji: "🧃", name: "Beverages"},
+      %{emoji: "🍫", name: "Snacks"},
+      %{emoji: "🧴", name: "Beauty"},
+      %{emoji: "🧹", name: "Cleaning"},
+      %{emoji: "👶", name: "Baby"},
+      %{emoji: "🐾", name: "Pet Care"},
+      %{emoji: "❄️", name: "Frozen"},
+      %{emoji: "🍳", name: "Breakfast"},
+      %{emoji: "🌿", name: "Organic"},
       %{emoji: "💊", name: "Health"}
     ]
   end
+
   def category_list(cats) do
     Enum.map(cats, fn c -> %{emoji: get_category_emoji(c.slug), name: c.name} end)
   end
 
   def product_display_list([], fallback), do: fallback
+
   def product_display_list(db_products, _) do
     Enum.map(db_products, fn p ->
       disc = Product.discount_pct(p)
+
       %{
-        id:           p.id,
-        emoji:        p.emoji,
-        name:         p.name,
-        badge:        badge_class(disc),
-        badge_label:  badge_label(disc),
-        price:        Product.format_price(p.base_price),
-        price_raw:    p.base_price,
-        old_price:    if(p.old_price, do: Product.format_price(p.old_price)),
+        id: p.id,
+        emoji: p.emoji,
+        name: p.name,
+        badge: badge_class(disc),
+        badge_label: badge_label(disc),
+        price: Product.format_price(p.base_price),
+        price_raw: p.base_price,
+        old_price: if(p.old_price, do: Product.format_price(p.old_price)),
         discount_pct: disc,
-        time:         "10 mins",
-        weight:       p.unit
+        time: "10 mins",
+        weight: p.unit
       }
     end)
   end
@@ -66,80 +77,224 @@ defmodule QcommerceWeb.CatalogComponents do
 
   defp db_product_to_chip(p) do
     %{
-      id:        p.id,
-      emoji:     p.emoji,
-      name:      p.name,
-      badge:     if(Product.discount_pct(p), do: "SALE"),
-      time:      "10 mins",
-      price:     Product.format_price(p.base_price),
+      id: p.id,
+      emoji: p.emoji,
+      name: p.name,
+      badge: if(Product.discount_pct(p), do: "SALE"),
+      time: "10 mins",
+      price: Product.format_price(p.base_price),
       price_raw: p.base_price
     }
   end
 
   defp badge_class(nil), do: nil
-  defp badge_class(_),   do: "badge-sale"
+  defp badge_class(_), do: "badge-sale"
   defp badge_label(nil), do: nil
   defp badge_label(pct), do: "#{pct}% off"
 
   defp get_category_emoji(slug) do
     case String.downcase(slug || "") do
-      "vegetables"  -> "🥬"; "fruits"     -> "🍎"; "dairy-eggs" -> "🥛"
-      "dairy"       -> "🥛"; "bakery"     -> "🍞"; "meat-fish"  -> "🥩"
-      "meat"        -> "🥩"; "beverages"  -> "🧃"; "snacks"     -> "🍫"
-      "beauty"      -> "🧴"; "cleaning"   -> "🧹"; "baby"       -> "👶"
-      "pet-care"    -> "🐾"; "frozen"     -> "❄️";  "breakfast"  -> "🍳"
-      "organic"     -> "🌿"; "health"     -> "💊"; _            -> "🛍️"
+      "vegetables" -> "🥬"
+      "fruits" -> "🍎"
+      "dairy-eggs" -> "🥛"
+      "dairy" -> "🥛"
+      "bakery" -> "🍞"
+      "meat-fish" -> "🥩"
+      "meat" -> "🥩"
+      "beverages" -> "🧃"
+      "snacks" -> "🍫"
+      "beauty" -> "🧴"
+      "cleaning" -> "🧹"
+      "baby" -> "👶"
+      "pet-care" -> "🐾"
+      "frozen" -> "❄️"
+      "breakfast" -> "🍳"
+      "organic" -> "🌿"
+      "health" -> "💊"
+      _ -> "🛍️"
     end
   end
 
   defp static_slides do
     [
-      %{theme: "slide-0", tag: "⚡ 10 Min Delivery",
+      %{
+        theme: "slide-0",
+        tag: "⚡ 10 Min Delivery",
         h2: "Freshness at <em>lightning speed</em>",
         p: "5,000+ products · zero waiting",
-        cta: "Shop now", emoji: ["🛒", "🥦", "🍎"],
+        cta: "Shop now",
+        emoji: ["🛒", "🥦", "🍎"],
         products: [
-          %{id: "s0-1", emoji: "🥑", name: "Organic Avocado Pack of 3", badge: "NEW",   time: "10 mins", price: "Rs. 89",  price_raw: "89"},
-          %{id: "s0-2", emoji: "🫐", name: "Fresh Blueberries 125g",    badge: "FRESH", time: "10 mins", price: "Rs. 149", price_raw: "149"},
-          %{id: "s0-3", emoji: "🥝", name: "Kiwi Fruit 4pcs",           badge: "SALE",  time: "10 mins", price: "Rs. 79",  price_raw: "79"},
-          %{id: "s0-4", emoji: "🍓", name: "Strawberries 250g",         badge: nil,     time: "10 mins", price: "Rs. 119", price_raw: "119"},
-          %{id: "s0-5", emoji: "🥭", name: "Alphonso Mango 500g",       badge: "HOT",   time: "10 mins", price: "Rs. 189", price_raw: "189"}
-        ]},
-      %{theme: "slide-1", tag: "🥛 Dairy Fresh",
+          %{
+            id: "s0-1",
+            emoji: "🥑",
+            name: "Organic Avocado Pack of 3",
+            badge: "NEW",
+            time: "10 mins",
+            price: "Rs. 89",
+            price_raw: "89"
+          },
+          %{
+            id: "s0-2",
+            emoji: "🫐",
+            name: "Fresh Blueberries 125g",
+            badge: "FRESH",
+            time: "10 mins",
+            price: "Rs. 149",
+            price_raw: "149"
+          },
+          %{
+            id: "s0-3",
+            emoji: "🥝",
+            name: "Kiwi Fruit 4pcs",
+            badge: "SALE",
+            time: "10 mins",
+            price: "Rs. 79",
+            price_raw: "79"
+          },
+          %{
+            id: "s0-4",
+            emoji: "🍓",
+            name: "Strawberries 250g",
+            badge: nil,
+            time: "10 mins",
+            price: "Rs. 119",
+            price_raw: "119"
+          },
+          %{
+            id: "s0-5",
+            emoji: "🥭",
+            name: "Alphonso Mango 500g",
+            badge: "HOT",
+            time: "10 mins",
+            price: "Rs. 189",
+            price_raw: "189"
+          }
+        ]
+      },
+      %{
+        theme: "slide-1",
+        tag: "🥛 Dairy Fresh",
         h2: "Farm fresh <em>dairy</em> every morning",
         p: "Delivered cold · certified organic",
-        cta: "Explore dairy", emoji: ["🥛", "🧀", "🥚"],
+        cta: "Explore dairy",
+        emoji: ["🥛", "🧀", "🥚"],
         products: [
-          %{id: "s1-1", emoji: "🥛", name: "Farm Fresh Milk 500ml",      badge: nil,    time: "10 mins", price: "Rs. 32", price_raw: "32"},
-          %{id: "s1-2", emoji: "🧀", name: "Amul Processed Cheese 200g", badge: nil,    time: "10 mins", price: "Rs. 89", price_raw: "89"},
-          %{id: "s1-3", emoji: "🥚", name: "Free Range Eggs Tray of 12", badge: "SALE", time: "10 mins", price: "Rs. 95", price_raw: "95"},
-          %{id: "s1-4", emoji: "🧈", name: "Amul Butter 100g",           badge: nil,    time: "10 mins", price: "Rs. 55", price_raw: "55"},
-          %{id: "s1-5", emoji: "🍦", name: "Greek Yogurt 400g",          badge: "NEW",  time: "10 mins", price: "Rs. 79", price_raw: "79"}
-        ]},
-      %{theme: "slide-2", tag: "🍫 Snacks & Munchies",
+          %{
+            id: "s1-1",
+            emoji: "🥛",
+            name: "Farm Fresh Milk 500ml",
+            badge: nil,
+            time: "10 mins",
+            price: "Rs. 32",
+            price_raw: "32"
+          },
+          %{
+            id: "s1-2",
+            emoji: "🧀",
+            name: "Amul Processed Cheese 200g",
+            badge: nil,
+            time: "10 mins",
+            price: "Rs. 89",
+            price_raw: "89"
+          },
+          %{
+            id: "s1-3",
+            emoji: "🥚",
+            name: "Free Range Eggs Tray of 12",
+            badge: "SALE",
+            time: "10 mins",
+            price: "Rs. 95",
+            price_raw: "95"
+          },
+          %{
+            id: "s1-4",
+            emoji: "🧈",
+            name: "Amul Butter 100g",
+            badge: nil,
+            time: "10 mins",
+            price: "Rs. 55",
+            price_raw: "55"
+          },
+          %{
+            id: "s1-5",
+            emoji: "🍦",
+            name: "Greek Yogurt 400g",
+            badge: "NEW",
+            time: "10 mins",
+            price: "Rs. 79",
+            price_raw: "79"
+          }
+        ]
+      },
+      %{
+        theme: "slide-2",
+        tag: "🍫 Snacks & Munchies",
         h2: "Late night <em>cravings</em> sorted",
         p: "Chocolates, chips & more",
-        cta: "Shop snacks", emoji: ["🍫", "🍿", "🧃"],
+        cta: "Shop snacks",
+        emoji: ["🍫", "🍿", "🧃"],
         products: [
-          %{id: "s2-1", emoji: "🍫", name: "Dairy Milk Silk 160g",      badge: nil,    time: "10 mins", price: "Rs. 139", price_raw: "139"},
-          %{id: "s2-2", emoji: "🍿", name: "Act II Popcorn Butter 30g", badge: "HOT",  time: "10 mins", price: "Rs. 25",  price_raw: "25"},
-          %{id: "s2-3", emoji: "🥨", name: "Pringles Original 107g",    badge: nil,    time: "10 mins", price: "Rs. 179", price_raw: "179"},
-          %{id: "s2-4", emoji: "🧃", name: "Real Fruit Mango 1L",       badge: "SALE", time: "10 mins", price: "Rs. 75",  price_raw: "75"},
-          %{id: "s2-5", emoji: "🍬", name: "Haribo Goldbears 200g",     badge: "NEW",  time: "10 mins", price: "Rs. 149", price_raw: "149"}
-        ]}
+          %{
+            id: "s2-1",
+            emoji: "🍫",
+            name: "Dairy Milk Silk 160g",
+            badge: nil,
+            time: "10 mins",
+            price: "Rs. 139",
+            price_raw: "139"
+          },
+          %{
+            id: "s2-2",
+            emoji: "🍿",
+            name: "Act II Popcorn Butter 30g",
+            badge: "HOT",
+            time: "10 mins",
+            price: "Rs. 25",
+            price_raw: "25"
+          },
+          %{
+            id: "s2-3",
+            emoji: "🥨",
+            name: "Pringles Original 107g",
+            badge: nil,
+            time: "10 mins",
+            price: "Rs. 179",
+            price_raw: "179"
+          },
+          %{
+            id: "s2-4",
+            emoji: "🧃",
+            name: "Real Fruit Mango 1L",
+            badge: "SALE",
+            time: "10 mins",
+            price: "Rs. 75",
+            price_raw: "75"
+          },
+          %{
+            id: "s2-5",
+            emoji: "🍬",
+            name: "Haribo Goldbears 200g",
+            badge: "NEW",
+            time: "10 mins",
+            price: "Rs. 149",
+            price_raw: "149"
+          }
+        ]
+      }
     ]
   end
 
   # ---------------------------------------------------------------------------
   # Section Header
   # ---------------------------------------------------------------------------
-  attr :title,        :string, required: true
+  attr :title, :string, required: true
   attr :see_all_href, :string, default: "#"
 
   def section_head(assigns) do
     ~H"""
     <div class="section-head">
-      <div class="section-title"><%= @title %></div>
+      <div class="section-title">{@title}</div>
       <a href={@see_all_href} class="section-see-all">See all →</a>
     </div>
     """
@@ -148,7 +303,7 @@ defmodule QcommerceWeb.CatalogComponents do
   # ---------------------------------------------------------------------------
   # Hero Carousel
   # ---------------------------------------------------------------------------
-  attr :slides,        :list,    required: true
+  attr :slides, :list, required: true
   attr :current_slide, :integer, default: 0
 
   def carousel(assigns) do
@@ -156,47 +311,60 @@ defmodule QcommerceWeb.CatalogComponents do
     <div class="carousel-wrap">
       <div class="carousel-dots" id="dots">
         <%= for {_s, idx} <- Enum.with_index(carousel_slides(@slides)) do %>
-          <div class={"dot #{if idx == @current_slide, do: "active"}"}
-               phx-click="go_slide" phx-value-index={idx}></div>
+          <div
+            class={"dot #{if idx == @current_slide, do: "active"}"}
+            phx-click="go_slide"
+            phx-value-index={idx}
+          >
+          </div>
         <% end %>
       </div>
       <div class="carousel-viewport">
-        <div class="carousel-track" id="track"
-             style={"transform:translateX(-#{@current_slide * 100}%)"}>
+        <div
+          class="carousel-track"
+          id="track"
+          style={"transform:translateX(-#{@current_slide * 100}%)"}
+        >
           <%= for slide <- carousel_slides(@slides) do %>
             <div class="carousel-slide">
               <div class={"slide-banner #{slide.theme}"}>
                 <div class="slide-banner-content">
                   <div class="slide-banner-tag">
-                    <span class="slide-banner-tag-dot"></span><%= slide.tag %>
+                    <span class="slide-banner-tag-dot"></span>{slide.tag}
                   </div>
-                  <h2><%= raw(slide.h2) %></h2>
-                  <p><%= slide.p %></p>
-                  <button class="slide-banner-cta"><%= slide.cta %> →</button>
+                  <h2>{raw(slide.h2)}</h2>
+                  <p>{slide.p}</p>
+                  <button class="slide-banner-cta">{slide.cta} →</button>
                 </div>
                 <div class="slide-banner-visual">
                   <%= for e <- slide.emoji do %>
-                    <span style="font-size:clamp(32px,6vw,72px);filter:drop-shadow(0 8px 16px rgba(0,0,0,0.3))"><%= e %></span>
+                    <span style="font-size:clamp(32px,6vw,72px);filter:drop-shadow(0 8px 16px rgba(0,0,0,0.3))">
+                      {e}
+                    </span>
                   <% end %>
                 </div>
               </div>
               <div class="slide-products">
                 <%= for prod <- slide.products do %>
-                  <div class="prod-chip"
-                       phx-click="add_to_cart"
-                       phx-value-product_id={prod.id}
-                       phx-value-price={prod.price_raw}>
+                  <div
+                    class="prod-chip"
+                    phx-click="add_to_cart"
+                    phx-value-product_id={prod.id}
+                    phx-value-price={prod.price_raw}
+                  >
                     <div class="prod-chip-img">
                       <%= if prod.badge do %>
-                        <div class={"prod-chip-badge#{if prod.badge == "SALE", do: " sale"}"}><%= prod.badge %></div>
+                        <div class={"prod-chip-badge#{if prod.badge == "SALE", do: " sale"}"}>
+                          {prod.badge}
+                        </div>
                       <% end %>
-                      <%= prod.emoji %>
+                      {prod.emoji}
                       <button class="prod-chip-add">+</button>
                     </div>
-                    <h4><%= prod.name %></h4>
+                    <h4>{prod.name}</h4>
                     <div class="prod-chip-meta">
-                      <div class="prod-chip-time">⚡ <%= prod.time %></div>
-                      <div class="prod-chip-price"><%= prod.price %></div>
+                      <div class="prod-chip-time">⚡ {prod.time}</div>
+                      <div class="prod-chip-price">{prod.price}</div>
                     </div>
                   </div>
                 <% end %>
@@ -215,11 +383,11 @@ defmodule QcommerceWeb.CatalogComponents do
   # ---------------------------------------------------------------------------
   # Offers Strip
   # ---------------------------------------------------------------------------
-  attr :flash_sale,      :map,    default: nil
+  attr :flash_sale, :map, default: nil
   attr :flash_countdown, :string, default: nil
-  attr :coupon_code,     :string, default: ""
-  attr :coupon_error,    :string, default: nil
-  attr :coupon_discount, :map,    default: nil
+  attr :coupon_code, :string, default: ""
+  attr :coupon_error, :string, default: nil
+  attr :coupon_discount, :map, default: nil
 
   def offers_strip(assigns) do
     ~H"""
@@ -247,8 +415,10 @@ defmodule QcommerceWeb.CatalogComponents do
             <div class="offer-icon" style="background:#fff3e0">⚡</div>
             <div class="offer-body">
               <h4>Flash Sale — Snacks &amp; Drinks</h4>
-              <p>Up to <%= @flash_sale.discount_pct %>% off</p>
-              <div class="offer-tag" style="background:#fff3e0;color:var(--accent)"><%= @flash_countdown %> left</div>
+              <p>Up to {@flash_sale.discount_pct}% off</p>
+              <div class="offer-tag" style="background:#fff3e0;color:var(--accent)">
+                {@flash_countdown} left
+              </div>
             </div>
           </div>
         <% end %>
@@ -263,15 +433,22 @@ defmodule QcommerceWeb.CatalogComponents do
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
         <form phx-submit="apply_coupon" style="display:flex;gap:8px;align-items:center">
-          <input type="text" name="code" placeholder="Enter coupon code" value={@coupon_code}
-            style="height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:200px" />
+          <input
+            type="text"
+            name="code"
+            placeholder="Enter coupon code"
+            value={@coupon_code}
+            style="height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:200px"
+          />
           <button type="submit" class="nav-btn nav-btn-primary" style="height:36px">Apply</button>
         </form>
         <%= if @coupon_error do %>
-          <span style="font-size:12px;color:#e91e63;font-weight:600">✗ <%= @coupon_error %></span>
+          <span style="font-size:12px;color:#e91e63;font-weight:600">✗ {@coupon_error}</span>
         <% end %>
         <%= if @coupon_discount do %>
-          <span style="font-size:12px;color:var(--green);font-weight:600">✓ <%= @coupon_discount.label %> applied!</span>
+          <span style="font-size:12px;color:var(--green);font-weight:600">
+            ✓ {@coupon_discount.label} applied!
+          </span>
         <% end %>
       </div>
     </section>
@@ -290,8 +467,8 @@ defmodule QcommerceWeb.CatalogComponents do
       <div class="cats-row">
         <%= for cat <- category_list(@categories) do %>
           <div class="cat-item">
-            <div class="cat-icon"><%= cat.emoji %></div>
-            <div class="cat-name"><%= cat.name %></div>
+            <div class="cat-icon">{cat.emoji}</div>
+            <div class="cat-name">{cat.name}</div>
           </div>
         <% end %>
       </div>
@@ -302,8 +479,8 @@ defmodule QcommerceWeb.CatalogComponents do
   # ---------------------------------------------------------------------------
   # Product Card
   # ---------------------------------------------------------------------------
-  attr :product,    :map,     required: true
-  attr :cart_items, :map,     default: %{}
+  attr :product, :map, required: true
+  attr :cart_items, :map, default: %{}
   attr :show_badge, :boolean, default: true
 
   def product_card(assigns) do
@@ -311,27 +488,29 @@ defmodule QcommerceWeb.CatalogComponents do
     <div class="prod-card" phx-click="show_product" phx-value-product_id={@product.id}>
       <div class="prod-card-img">
         <%= if @show_badge && @product.badge do %>
-          <div class={"prod-card-badge #{@product.badge}"}><%= @product.badge_label %></div>
+          <div class={"prod-card-badge #{@product.badge}"}>{@product.badge_label}</div>
         <% end %>
-        <%= @product.emoji %>
-        <button class={"prod-card-add#{if Map.get(@cart_items, @product.id, %{qty: 0}).qty > 0, do: " added"}"}
+        {@product.emoji}
+        <button
+          class={"prod-card-add#{if Map.get(@cart_items, @product.id, %{qty: 0}).qty > 0, do: " added"}"}
           phx-click="add_to_cart"
           phx-value-product_id={@product.id}
-          phx-value-price={@product.price_raw}>
-          <%= if Map.get(@cart_items, @product.id, %{qty: 0}).qty > 0, do: "✓", else: "+" %>
+          phx-value-price={@product.price_raw}
+        >
+          {if Map.get(@cart_items, @product.id, %{qty: 0}).qty > 0, do: "✓", else: "+"}
         </button>
       </div>
       <div class="prod-card-body">
-        <div class="prod-card-name"><%= @product.name %></div>
+        <div class="prod-card-name">{@product.name}</div>
         <div class="prod-card-info">
-          <div class="prod-card-time">⚡ <%= @product.time %></div>
-          <div class="prod-card-weight"><%= @product.weight %></div>
+          <div class="prod-card-time">⚡ {@product.time}</div>
+          <div class="prod-card-weight">{@product.weight}</div>
         </div>
         <div class="prod-card-price">
-          <strong><%= @product.price %></strong>
+          <strong>{@product.price}</strong>
           <%= if @product.old_price do %>
-            <del><%= @product.old_price %></del>
-            <span class="disc"><%= @product.discount_pct %>% off</span>
+            <del>{@product.old_price}</del>
+            <span class="disc">{@product.discount_pct}% off</span>
           <% end %>
         </div>
       </div>
@@ -342,10 +521,10 @@ defmodule QcommerceWeb.CatalogComponents do
   # ---------------------------------------------------------------------------
   # Product Section (heading + grid)
   # ---------------------------------------------------------------------------
-  attr :title,      :string, required: true
-  attr :products,   :list,   required: true
-  attr :fallback,   :list,   default: []
-  attr :cart_items, :map,    default: %{}
+  attr :title, :string, required: true
+  attr :products, :list, required: true
+  attr :fallback, :list, default: []
+  attr :cart_items, :map, default: %{}
 
   def product_section(assigns) do
     ~H"""

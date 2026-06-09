@@ -8,8 +8,8 @@ defmodule Qcommerce.Accounts.UserPasskey do
     belongs_to :user, Qcommerce.Accounts.User
 
     field :external_id, :binary
-    field :public_key,  :binary
-    field :nickname,    :string
+    field :public_key, :binary
+    field :nickname, :string
 
     timestamps()
   end

@@ -59,8 +59,10 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
         displayName: user.full_name
       },
       pubKeyCredParams: [
-        %{type: "public-key", alg: -7},   # ES256
-        %{type: "public-key", alg: -257}  # RS256
+        # ES256
+        %{type: "public-key", alg: -7},
+        # RS256
+        %{type: "public-key", alg: -257}
       ],
       authenticatorSelection: %{
         authenticatorAttachment: "platform",
@@ -93,21 +95,20 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
          :ok <- verify_origin(client_data),
          {:ok, credential_id} <- decode_base64url(credential["id"]),
          {:ok, public_key_bytes} <- extract_public_key(credential) do
-
       # Check if this credential is already registered
       case Repo.get_by(UserPasskey, external_id: credential_id) do
         nil ->
           %UserPasskey{}
           |> UserPasskey.changeset(%{
-            user_id:    user.id,
+            user_id: user.id,
             external_id: credential_id,
-            public_key:  public_key_bytes,
-            nickname:    nickname
+            public_key: public_key_bytes,
+            nickname: nickname
           })
           |> Repo.insert()
           |> case do
             {:ok, passkey} -> {:ok, passkey}
-            {:error, cs}   -> {:error, {:db_error, cs}}
+            {:error, cs} -> {:error, {:db_error, cs}}
           end
 
         _existing ->
@@ -133,16 +134,22 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
 
     # If we know the user, hint with their credential ids
     case user do
-      nil -> base
+      nil ->
+        base
+
       user ->
-        credential_ids = Repo.all(
-          from p in UserPasskey,
-          where: p.user_id == ^user.id,
-          select: p.external_id
-        )
-        allow = Enum.map(credential_ids, fn id ->
-          %{type: "public-key", id: Base.url_encode64(id, padding: false)}
-        end)
+        credential_ids =
+          Repo.all(
+            from p in UserPasskey,
+              where: p.user_id == ^user.id,
+              select: p.external_id
+          )
+
+        allow =
+          Enum.map(credential_ids, fn id ->
+            %{type: "public-key", id: Base.url_encode64(id, padding: false)}
+          end)
+
         Map.put(base, :allowCredentials, allow)
     end
   end
@@ -169,7 +176,6 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
          :ok <- verify_origin(client_data),
          {:ok, credential_id} <- decode_base64url(credential["id"]),
          {:ok, passkey} <- find_passkey(credential_id) do
-
       # ── Signature verification ──────────────────────────────────────────────
       # TODO (production): verify the assertion signature using the stored
       # public_key (COSE-encoded). Requires a CBOR decoder + EC/RSA crypto:
@@ -198,7 +204,7 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
     case Base.url_decode64(external_id_b64, padding: false) do
       {:ok, external_id} ->
         case Repo.get_by(UserPasskey, external_id: external_id) |> Repo.preload(:user) do
-          nil     -> {:error, :not_found}
+          nil -> {:error, :not_found}
           passkey -> {:ok, passkey.user}
         end
 
@@ -210,13 +216,13 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
   @doc "Register passkey with raw base64url strings (for dev/simulate flow)."
   def register_passkey(user, external_id_b64, public_key_b64, nickname \\ "My Phone") do
     with {:ok, external_id} <- Base.url_decode64(external_id_b64, padding: false),
-         {:ok, public_key}  <- Base.url_decode64(public_key_b64, padding: false) do
+         {:ok, public_key} <- Base.url_decode64(public_key_b64, padding: false) do
       %UserPasskey{}
       |> UserPasskey.changeset(%{
-        user_id:     user.id,
+        user_id: user.id,
         external_id: external_id,
-        public_key:  public_key,
-        nickname:    nickname
+        public_key: public_key,
+        nickname: nickname
       })
       |> Repo.insert()
     else
@@ -234,11 +240,14 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
       {:ok, data}
     end
   end
+
   defp decode_client_data(_), do: {:error, :missing_client_data}
 
   defp verify_type(%{"type" => type}, expected) when type == expected, do: :ok
+
   defp verify_type(%{"type" => got}, expected),
     do: {:error, {:wrong_type, expected: expected, got: got}}
+
   defp verify_type(_, _), do: {:error, :missing_type}
 
   defp verify_challenge(%{"challenge" => got_b64}, expected) do
@@ -253,11 +262,13 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
         if got_b64 == expected, do: :ok, else: {:error, :challenge_mismatch}
     end
   end
+
   defp verify_challenge(_, _), do: {:error, :missing_challenge}
 
   defp verify_origin(%{"origin" => origin}) do
     if origin == @origin, do: :ok, else: {:error, {:wrong_origin, origin}}
   end
+
   defp verify_origin(_), do: {:error, :missing_origin}
 
   defp extract_public_key(%{"response" => %{"attestationObject" => b64}}) do
@@ -265,14 +276,18 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
     # In full production you'd CBOR-decode this to extract the COSE public key.
     decode_base64url(b64)
   end
+
   defp extract_public_key(_), do: {:error, :missing_attestation}
 
   defp decode_base64url(b64) when is_binary(b64) do
     case Base.url_decode64(b64, padding: false) do
-      {:ok, bytes} -> {:ok, bytes}
+      {:ok, bytes} ->
+        {:ok, bytes}
+
       :error ->
         # Try with padding
         padded = b64 <> String.duplicate("=", rem(4 - rem(byte_size(b64), 4), 4))
+
         case Base.url_decode64(padded) do
           {:ok, bytes} -> {:ok, bytes}
           :error -> {:error, {:bad_base64, b64}}
@@ -282,7 +297,7 @@ defmodule Qcommerce.Accounts.PasskeyAuth do
 
   defp find_passkey(credential_id) when is_binary(credential_id) do
     case Repo.get_by(UserPasskey, external_id: credential_id) do
-      nil     -> {:error, :passkey_not_found}
+      nil -> {:error, :passkey_not_found}
       passkey -> {:ok, passkey}
     end
   end

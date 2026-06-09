@@ -1,4 +1,4 @@
-defmodule QcommerceWeb.LayoutComponents do
+defmodule QcommerceWeb.Live.Components.LayoutComponents do
   use QcommerceWeb, :html
 
   # ---------------------------------------------------------------------------

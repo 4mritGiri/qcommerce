@@ -2,6 +2,9 @@
 defmodule QcommerceWeb.SessionController do
   use QcommerceWeb, :controller
 
+  alias Qcommerce.Repo
+  alias Qcommerce.Accounts.User
+
   alias Qcommerce.Accounts
   alias Qcommerce.Accounts.PasskeyAuth
   alias Qcommerce.Cart.CartSession

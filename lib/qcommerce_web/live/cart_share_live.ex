@@ -17,6 +17,7 @@ defmodule QcommerceWeb.CartShareLive do
     case Cart.get_share(token) do
       {:ok, share} ->
         items = Cart.deserialize_items(share)
+
         {:ok,
          socket
          |> assign(:page_title, "Cart shared with you — QCommerce")
@@ -24,8 +25,7 @@ defmodule QcommerceWeb.CartShareLive do
          |> assign(:items, items)
          |> assign(:seconds_left, CartShare.seconds_remaining(share))
          |> assign(:added, false)
-         |> assign(:error, nil),
-         layout: false}
+         |> assign(:error, nil), layout: false}
 
       {:error, :expired} ->
         {:ok,
@@ -35,8 +35,7 @@ defmodule QcommerceWeb.CartShareLive do
          |> assign(:items, %{})
          |> assign(:seconds_left, 0)
          |> assign(:added, false)
-         |> assign(:error, :expired),
-         layout: false}
+         |> assign(:error, :expired), layout: false}
 
       {:error, :not_found} ->
         {:ok,
@@ -46,8 +45,7 @@ defmodule QcommerceWeb.CartShareLive do
          |> assign(:items, %{})
          |> assign(:seconds_left, 0)
          |> assign(:added, false)
-         |> assign(:error, :not_found),
-         layout: false}
+         |> assign(:error, :not_found), layout: false}
     end
   end
 
@@ -55,6 +53,7 @@ defmodule QcommerceWeb.CartShareLive do
   def handle_info(:tick, %{assigns: %{seconds_left: s}} = socket) when s <= 0 do
     {:noreply, socket}
   end
+
   def handle_info(:tick, socket) do
     {:noreply, assign(socket, :seconds_left, socket.assigns.seconds_left - 1)}
   end
@@ -64,6 +63,7 @@ defmodule QcommerceWeb.CartShareLive do
     # Merge into the session cart via JS localStorage or redirect home with items
     # For now: redirect to home with a query param that home_live picks up
     _item_ids = items |> Map.keys() |> Enum.join(",")
+
     {:noreply,
      socket
      |> assign(:added, true)
@@ -75,6 +75,7 @@ defmodule QcommerceWeb.CartShareLive do
   # ---------------------------------------------------------------------------
 
   def format_countdown(secs) when secs <= 0, do: "Expired"
+
   def format_countdown(secs) do
     h = div(secs, 3600)
     m = div(rem(secs, 3600), 60)
