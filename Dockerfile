@@ -55,16 +55,15 @@ COPY lib lib
 # Compile the release
 RUN mix compile
 
-# COPY assets assets
+# Node installed once
+RUN apt-get update && apt-get install -y curl ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
 COPY assets/package.json assets/package-lock.json ./assets/
-
-RUN mix assets.setup
-
-COPY assets assets
-
 RUN npm --prefix assets ci
 
-# compile assets
+COPY assets assets
 RUN mix assets.deploy
 
 # Changes to config/runtime.exs don't require recompiling the code
