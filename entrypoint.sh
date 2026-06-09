@@ -1,24 +1,36 @@
 #!/bin/sh
-# entrypoint.sh for Phoenix release deployment with Ecto migrations
 set -e
 
-echo "Running migrations..."
-max_attempts=30
-attempt=1
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-# Run the compiled release migration task
-until /app/bin/migrate || [ $attempt -eq $max_attempts ]; do
-  echo "Database migration failed (attempt $attempt/$max_attempts), retrying in 2 seconds..."
+info()    { printf "${YELLOW}[INFO]  %s${NC}\n" "$1"; }
+success() { printf "${GREEN}[OK]    %s${NC}\n" "$1"; }
+error()   { printf "${RED}[ERROR] %s${NC}\n" "$1"; }
+warn()    { printf "${YELLOW}[WARN]  %s${NC}\n" "$1"; }
+
+info "Starting migration process..."
+attempt=1
+max_attempts=30
+
+while [ $attempt -le $max_attempts ]; do
+  if /app/bin/migrate; then
+    success "Migrations completed successfully!"
+    break
+  fi
+
+  if [ $attempt -eq $max_attempts ]; then
+    error "Migration failed after $max_attempts attempts. Exiting."
+    exit 1
+  fi
+
+  warn "Migration failed (attempt $attempt/$max_attempts), retrying in 2 seconds..."
   attempt=$((attempt + 1))
   sleep 2
 done
 
-if [ $attempt -eq $max_attempts ]; then
-  echo "Migration failed after $max_attempts attempts. Exiting."
-  exit 1
-fi
-
-echo "Migrations completed successfully! Starting Phoenix server..."
-
-# Execute the CMD passed to Docker (by default /app/bin/server)
+success "Starting Phoenix server..."
 exec "$@"

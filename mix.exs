@@ -133,11 +133,17 @@ defmodule Qcommerce.MixProject do
       ],
       # Docker Compose shortcuts
       "docker.dev": ["cmd docker compose up"],
+      "docker.dev.build": ["cmd docker compose up --build"],
+      "docker.dev.down": ["cmd docker compose down"],
       "docker.prod": ["cmd docker compose -f compose.prod.yaml up --build -d"],
-      "docker.down": ["cmd docker compose down && docker compose -f compose.prod.yaml down"],
-      "docker-dev": ["docker.dev"],
-      "docker-prod": ["docker.prod"],
-      "docker-down": ["docker.down"]
+      "docker.prod.down": ["cmd docker compose -f compose.prod.yaml down"],
+      "docker.down.all": [
+        "cmd docker compose -f compose.prod.yaml down && docker compose -f compose.yaml down"
+      ],
+      "docker.logs.dev": ["cmd docker compose -f compose.yaml logs -f"],
+      "docker.logs.prod": ["cmd docker compose -f compose.prod.yaml logs -f"],
+      "docker.restart.dev": ["cmd docker compose -f compose.yaml restart"],
+      "docker.restart.prod": ["cmd docker compose -f compose.prod.yaml restart"]
     ]
   end
 end

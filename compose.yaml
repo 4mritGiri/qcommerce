@@ -1,33 +1,28 @@
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: qcommerce_web_dev
-    command: mix phx.server
-    environment:
-      - MIX_ENV=dev
-      - DATABASE_HOST=host.docker.internal
-      - DATABASE_USER=postgres
-      - DATABASE_PASSWORD=123456
-      - DATABASE_DB=qcommerce_dev
-      - SECRET_KEY_BASE=ObYLtl44alkzxbS+KNWiIMwpOBEaVGw63IJWnzrSMhFmyHI4mGiP262xoGd7YInd
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - .:/app
-      - /app/_build
-      - /app/deps
-    networks:
-      - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik-net"
-      - "traefik.http.routers.qcommerce-dev.rule=${HOSTS:-Host(`qcommerce.localhost`)}"
-      - "traefik.http.services.qcommerce-dev.loadbalancer.server.port=4000"
-      - "traefik.http.routers.qcommerce-dev.entrypoints=web,websecure"
-      - "traefik.http.routers.qcommerce-dev.tls=false"
-
+    web:
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
+        container_name: qcommerce_web_dev
+        command: mix phx.server
+        env_file: .env # ← load from .env
+        environment:
+            - MIX_ENV=dev
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        volumes:
+            - .:/app
+            - /app/_build
+            - /app/deps
+        networks:
+            - traefik-net
+        labels:
+            - "traefik.enable=true"
+            - "traefik.docker.network=traefik-net"
+            - "traefik.http.routers.qcommerce-dev.rule=${HOSTS:-Host(`qcommerce.localhost`)}"
+            - "traefik.http.services.qcommerce-dev.loadbalancer.server.port=4000"
+            - "traefik.http.routers.qcommerce-dev.entrypoints=web"
+            - "traefik.http.routers.qcommerce-dev.tls=false"
 networks:
-  traefik-net:
-    external: true
+    traefik-net:
+        external: true

@@ -1,28 +1,32 @@
 services:
-   web:
-      build:
-         context: .
-         dockerfile: Dockerfile
-      container_name: qcommerce_web_prod
-      environment:
-         - MIX_ENV=prod
-         - DATABASE_URL=${DATABASE_URL}
-         - SECRET_KEY_BASE=${SECRET_KEY_BASE}
-         - PHX_HOST=${PHX_HOST:-qcom.bizpro.com.np}
-         - PORT=4000
-      extra_hosts:
-         - "host.docker.internal:host-gateway"
-      networks:
-         - traefik-net
-      labels:
-         - "traefik.enable=true"
-         - "traefik.docker.network=traefik-net"
-         - "traefik.http.routers.qcommerce.rule=${HOSTS:-Host(`qcom.bizpro.com.np`)}"
-         - "traefik.http.services.qcommerce.loadbalancer.server.port=4000"
-         - "traefik.http.routers.qcommerce.entrypoints=web,websecure"
-         - "traefik.http.routers.qcommerce.tls=true"
-         - "traefik.http.routers.qcommerce.tls.certresolver=myresolver"
-
+    web:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: qcommerce_web_prod
+        env_file: .env # ← load from .env
+        environment:
+            - MIX_ENV=prod
+            - PORT=4000
+        restart: unless-stopped # ← auto-restart on crash
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+            - traefik-net
+        labels:
+            - "traefik.enable=true"
+            - "traefik.docker.network=traefik-net"
+            - "traefik.http.routers.qcommerce.rule=${HOSTS:-Host(`qcom.bizpro.com.np`)}"
+            - "traefik.http.services.qcommerce.loadbalancer.server.port=4000"
+            - "traefik.http.routers.qcommerce.entrypoints=web,websecure"
+            - "traefik.http.routers.qcommerce.tls=true"
+            - "traefik.http.routers.qcommerce.tls.certresolver=myresolver"
 networks:
-   traefik-net:
-      external: true
+    traefik-net:
+        external: true
