@@ -172,53 +172,62 @@ defmodule Qcommerce.Admin.Registry do
           do: String.replace_suffix(label, "ies", "y"),
           else: String.replace_suffix(label, "s", "")
 
-    config = %{
-      schema:
-        opts
-        |> Keyword.fetch!(:schema)
-        |> Macro.expand(env),
-      context:
-        opts
-        |> Keyword.fetch!(:context)
-        |> Macro.expand(env),
-      label: label,
-      label_singular: label_singular,
-      group: Keyword.get(opts, :group, "General"),
-      icon: Keyword.get(opts, :icon, "hero-document"),
-      roles: Keyword.get(opts, :roles, [:super_admin]),
-      list_fields: Keyword.get(opts, :list_fields, [:id, :inserted_at]),
-      list_display_links: Keyword.get(opts, :list_display_links, [:id]),
-      list_select_related: Keyword.get(opts, :list_select_related, []),
-      list_per_page: Keyword.get(opts, :list_per_page, 25),
-      show_full_result_count: Keyword.get(opts, :show_full_result_count, true),
-      date_hierarchy: Keyword.get(opts, :date_hierarchy),
-      search_fields: Keyword.get(opts, :search_fields, []),
-      filters: Keyword.get(opts, :filters, []),
-      ordering: Keyword.get(opts, :ordering, ["-inserted_at"]),
-      readonly_fields: Keyword.get(opts, :readonly_fields, [:id, :inserted_at, :updated_at]),
-      fieldsets: Keyword.get(opts, :fieldsets),
-      prepopulated_fields: Keyword.get(opts, :prepopulated_fields, []),
-      save_on_top: Keyword.get(opts, :save_on_top, false),
-      empty_value_display: Keyword.get(opts, :empty_value_display, "—"),
-      actions: Keyword.get(opts, :actions, [:show, :edit, :delete]),
-      custom_actions: Keyword.get(opts, :custom_actions, []),
-      inlines:
-        Enum.map(Keyword.get(opts, :inlines, []), fn inline ->
-          inline
-          |> Map.update!(:schema, &Macro.expand(&1, env))
-          |> Map.update!(:context, &Macro.expand(&1, env))
-        end),
-      list_fn: Keyword.get(opts, :list_fn, :list),
-      get_fn: Keyword.get(opts, :get_fn, :get),
-      create_fn: Keyword.get(opts, :create_fn, :create),
-      update_fn: Keyword.get(opts, :update_fn, :update),
-      delete_fn: Keyword.get(opts, :delete_fn, :delete)
-    }
+    schema_mod  = opts |> Keyword.fetch!(:schema)  |> Macro.expand(env)
+    context_mod = opts |> Keyword.fetch!(:context) |> Macro.expand(env)
 
+    # Inlines: expand schema/context module aliases at compile time.
+    # Other values (fk_field, label, fields, etc.) are plain atoms/strings
+    # so they survive unquote correctly without Macro.escape.
+    expanded_inlines =
+      Keyword.get(opts, :inlines, [])
+      |> Enum.map(fn {:%{}, meta, kvs} ->
+        updated =
+          Enum.map(kvs, fn
+            {:schema,  s} -> {:schema,  Macro.expand(s, env)}
+            {:context, c} -> {:context, Macro.expand(c, env)}
+            other         -> other
+          end)
+        {:%{}, meta, updated}
+      end)
+
+    # custom_actions, fieldsets, filters etc. contain only plain Elixir
+    # literals (strings, atoms, booleans). Injecting their AST directly
+    # via unquote lets the compiler evaluate them to real maps/tuples at
+    # runtime — avoiding the double-escape that Macro.escape(config) caused.
     quote do
       @doc "Returns the admin config map for this registered module."
       def admin_config do
-        unquote(Macro.escape(config))
+        %{
+          schema:               unquote(schema_mod),
+          context:              unquote(context_mod),
+          label:                unquote(label),
+          label_singular:       unquote(label_singular),
+          group:                unquote(Keyword.get(opts, :group, "General")),
+          icon:                 unquote(Keyword.get(opts, :icon, "hero-document")),
+          roles:                unquote(Keyword.get(opts, :roles, [:super_admin])),
+          list_fields:          unquote(Keyword.get(opts, :list_fields, [:id, :inserted_at])),
+          list_display_links:   unquote(Keyword.get(opts, :list_display_links, [:id])),
+          list_select_related:  unquote(Keyword.get(opts, :list_select_related, [])),
+          list_per_page:        unquote(Keyword.get(opts, :list_per_page, 25)),
+          show_full_result_count: unquote(Keyword.get(opts, :show_full_result_count, true)),
+          date_hierarchy:       unquote(Keyword.get(opts, :date_hierarchy)),
+          search_fields:        unquote(Keyword.get(opts, :search_fields, [])),
+          filters:              unquote(Keyword.get(opts, :filters, [])),
+          ordering:             unquote(Keyword.get(opts, :ordering, ["-inserted_at"])),
+          readonly_fields:      unquote(Keyword.get(opts, :readonly_fields, [:id, :inserted_at, :updated_at])),
+          fieldsets:            unquote(Keyword.get(opts, :fieldsets)),
+          prepopulated_fields:  unquote(Keyword.get(opts, :prepopulated_fields, [])),
+          save_on_top:          unquote(Keyword.get(opts, :save_on_top, false)),
+          empty_value_display:  unquote(Keyword.get(opts, :empty_value_display, "—")),
+          actions:              unquote(Keyword.get(opts, :actions, [:show, :edit, :delete])),
+          custom_actions:       unquote(Keyword.get(opts, :custom_actions, [])),
+          inlines:              unquote(expanded_inlines),
+          list_fn:              unquote(Keyword.get(opts, :list_fn, :list)),
+          get_fn:               unquote(Keyword.get(opts, :get_fn, :get)),
+          create_fn:            unquote(Keyword.get(opts, :create_fn, :create)),
+          update_fn:            unquote(Keyword.get(opts, :update_fn, :update)),
+          delete_fn:            unquote(Keyword.get(opts, :delete_fn, :delete))
+        }
       end
     end
   end

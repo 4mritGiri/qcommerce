@@ -2,10 +2,12 @@
 #
 # Generic CRUD LiveView — auto-generates list, show, new, edit from the
 # registered admin config + Ecto schema introspection.
-# URL pattern: /admin/r/:resource          → :list  (live_action: :list)
-#              /admin/r/:resource/new      → :new   (live_action: :new)
-#              /admin/r/:resource/:id      → :show  (live_action: :show)
-#              /admin/r/:resource/:id/edit → :edit  (live_action: :edit)
+#
+# URL pattern:
+#   /admin/r/:resource              → :list
+#   /admin/r/:resource/new          → :new
+#   /admin/r/:resource/:id          → :show
+#   /admin/r/:resource/:id/edit     → :edit
 
 defmodule QcommerceWeb.Admin.ResourceLive do
   use QcommerceWeb, :live_view
@@ -13,77 +15,84 @@ defmodule QcommerceWeb.Admin.ResourceLive do
   alias Qcommerce.{Repo, Admin.Registry, Admin.FieldHelper}
   alias Qcommerce.Accounts.User
 
-  @per_page 25
+  import Ecto.Query
 
   # ---------------------------------------------------------------------------
-  # mount/3 — auth guard + registry lookup
+  # Mount — auth guard + registry lookup
   # ---------------------------------------------------------------------------
 
   @impl true
   def mount(%{"resource" => slug} = _params, session, socket) do
     user_id = session["user_id"]
-    user = user_id && Repo.get(User, user_id)
+    user    = user_id && Repo.get(User, user_id)
 
     allowed_roles = [:super_admin, :manager, :staff]
 
-    if is_nil(user) or user.role not in allowed_roles do
-      {:ok, push_navigate(socket, to: "/")}
-    else
-      config = Registry.get(slug)
+    cond do
+      is_nil(user) or user.role not in allowed_roles ->
+        {:ok, push_navigate(socket, to: "/")}
 
-      cond do
-        is_nil(config) ->
-          {:ok,
-           socket
-           |> put_flash(:error, "Model '#{slug}' is not registered.")
-           |> push_navigate(to: "/admin")}
+      true ->
+        config = Registry.get(slug)
 
-        # Check per-model role permission
-        user.role not in (config[:roles] || [:super_admin]) ->
-          {:ok,
-           socket
-           |> put_flash(:error, "You don't have permission to access this resource.")
-           |> push_navigate(to: "/admin")}
+        cond do
+          is_nil(config) ->
+            {:ok,
+             socket
+             |> put_flash(:error, "Model '#{slug}' is not registered.")
+             |> push_navigate(to: "/admin")}
 
-        true ->
-          {:ok,
-           socket
-           |> assign(:current_user, user)
-           |> assign(:config, config)
-           |> assign(:resource_slug, Registry.schema_to_slug(config.schema))
-           |> assign(:admin_resource, config.schema)
-           |> assign(:per_page, @per_page)}
-      end
+          user.role not in (config[:roles] || [:super_admin]) ->
+            {:ok,
+             socket
+             |> put_flash(:error, "You don't have permission to access this resource.")
+             |> push_navigate(to: "/admin")}
+
+          true ->
+            {:ok,
+             socket
+             |> assign(:current_user, user)
+             |> assign(:config, config)
+             |> assign(:resource_slug, Registry.schema_to_slug(config.schema))
+             |> assign(:admin_resource, config.schema)
+             |> assign(:delete_confirm_id, nil)}
+        end
     end
   end
 
   # ---------------------------------------------------------------------------
-  # handle_params — primary driver (called after mount on every navigation)
+  # handle_params — primary driver
   # ---------------------------------------------------------------------------
 
   @impl true
   def handle_params(params, _uri, socket) do
-    # Only proceed once config is loaded (mount sets it)
     if config = socket.assigns[:config] do
-      action = socket.assigns.live_action
-      {:noreply, load_page(socket, config, action, params)}
+      {:noreply, load_page(socket, config, socket.assigns.live_action, params)}
     else
       {:noreply, socket}
     end
   end
 
   # ---------------------------------------------------------------------------
-  # Page loader
+  # Page loaders
   # ---------------------------------------------------------------------------
 
   defp load_page(socket, config, action, params) do
-    q = params["q"] || ""
-    page = String.to_integer(params["page"] || "1")
-    sort_by = params["sort_by"] || "id"
-    sort_dir = params["sort_dir"] || "desc"
+    q        = params["q"] || ""
+    page     = String.to_integer(params["page"] || "1")
+    sort_by  = params["sort_by"]  || default_sort_field(config)
+    sort_dir = params["sort_dir"] || default_sort_dir(config)
 
-    filter_names = filterable_fields(config.schema) |> Enum.map(&to_string(&1.name))
+    filter_names = FieldHelper.filterable_fields(config.schema, config.filters)
+                   |> Enum.map(&to_string(&1.name))
     filters = Map.take(params, filter_names)
+
+    # Date hierarchy drill-down params
+    date_drill = %{
+      "year"  => params["year"],
+      "month" => params["month"],
+      "day"   => params["day"]
+    } |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Map.new()
 
     base =
       socket
@@ -93,123 +102,160 @@ defmodule QcommerceWeb.Admin.ResourceLive do
       |> assign(:sort_by, sort_by)
       |> assign(:sort_dir, sort_dir)
       |> assign(:filters, filters)
+      |> assign(:date_drill, date_drill)
 
     case action do
       :list -> load_list(base, config, params)
       :show -> load_record(base, config, params["id"])
       :edit -> load_edit(base, config, params["id"])
-      :new -> load_new(base, config)
+      :new  -> load_new(base, config)
     end
   end
 
-  defp load_list(socket, config, params) do
-    q = params["q"] || ""
-    page = String.to_integer(params["page"] || "1")
-    sort_by = params["sort_by"] || "id"
-    sort_dir = params["sort_dir"] || "desc"
+  defp default_sort_field(config) do
+    case config.ordering do
+      [first | _] -> first |> to_string() |> String.trim_leading("-")
+      _ -> "id"
+    end
+  end
 
-    filter_names = filterable_fields(config.schema) |> Enum.map(&to_string(&1.name))
+  defp default_sort_dir(config) do
+    case config.ordering do
+      [first | _] -> if String.starts_with?(to_string(first), "-"), do: "desc", else: "asc"
+      _ -> "desc"
+    end
+  end
+
+  defp per_page(config), do: Map.get(config, :list_per_page, 25)
+
+  defp load_list(socket, config, params) do
+    q        = params["q"] || ""
+    page     = String.to_integer(params["page"] || "1")
+    sort_by  = params["sort_by"]  || default_sort_field(config)
+    sort_dir = params["sort_dir"] || default_sort_dir(config)
+
+    filter_names = FieldHelper.filterable_fields(config.schema, config.filters)
+                   |> Enum.map(&to_string(&1.name))
     filters = Map.take(params, filter_names)
 
-    {records, total} = fetch_list(config, q, page, sort_by, sort_dir, filters)
-    filter_opts = fetch_filter_options(config.schema)
+    date_drill = %{
+      "year"  => params["year"],
+      "month" => params["month"],
+      "day"   => params["day"]
+    } |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Map.new()
+
+    pp = per_page(config)
+    {records, total} = fetch_list(config, q, page, sort_by, sort_dir, filters, date_drill, pp)
+    filter_opts = FieldHelper.fetch_filter_options(config.schema, config.filters)
     slug = socket.assigns.resource_slug
 
-    # Preserve any existing open/search state, initialising fresh keys for new fields
-    existing_open = socket.assigns[:filter_open] || %{}
+    existing_open   = socket.assigns[:filter_open]   || %{}
     existing_search = socket.assigns[:filter_search] || %{}
-    filter_open = Map.new(filter_opts, fn {k, _} -> {k, Map.get(existing_open, k, false)} end)
+    filter_open   = Map.new(filter_opts, fn {k, _} -> {k, Map.get(existing_open,   k, false)} end)
     filter_search = Map.new(filter_opts, fn {k, _} -> {k, Map.get(existing_search, k, "")} end)
 
+    # Date hierarchy counts for current level
+    date_counts =
+      if config.date_hierarchy do
+        build_date_hierarchy_counts(config, date_drill)
+      else
+        []
+      end
+
     socket
-    |> assign(:page_title, config.label)
-    |> assign(:breadcrumb, [{"Admin", "/admin"}, {config.label, nil}])
-    |> assign(:records, records)
-    |> assign(:total, total)
-    |> assign(:total_pages, max(1, ceil(total / @per_page)))
-    |> assign(:list_fields, FieldHelper.fields_for(config.schema, config.list_fields))
+    |> assign(:page_title,    config.label)
+    |> assign(:breadcrumb,    [{"Admin", "/admin"}, {config.label, nil}])
+    |> assign(:records,       records)
+    |> assign(:total,         total)
+    |> assign(:per_page,      pp)
+    |> assign(:total_pages,   max(1, ceil(total / pp)))
+    |> assign(:list_fields,   FieldHelper.fields_for(config.schema, config.list_fields))
     |> assign(:filter_options, filter_opts)
-    |> assign(:filter_open, filter_open)
+    |> assign(:filter_open,   filter_open)
     |> assign(:filter_search, filter_search)
-    |> assign(:selected_ids, [])
+    |> assign(:selected_ids,  socket.assigns[:selected_ids] || [])
     |> assign(:resource_slug, slug)
+    |> assign(:date_counts,   date_counts)
   end
 
   defp load_record(socket, config, id) do
-    record = Repo.get(config.schema, id)
+    record     = Repo.get(config.schema, id)
     all_fields = FieldHelper.fields_for(config.schema)
-    slug = socket.assigns.resource_slug
+    slug       = socket.assigns.resource_slug
 
     socket
     |> assign(:page_title, "#{config.label} ##{id}")
-    |> assign(:breadcrumb, [
-      {"Admin", "/admin"},
-      {config.label, "/admin/r/#{slug}"},
-      {"##{id}", nil}
-    ])
+    |> assign(:breadcrumb, [{"Admin", "/admin"}, {config.label, "/admin/r/#{slug}"}, {"##{id}", nil}])
     |> assign(:record, record)
     |> assign(:all_fields, all_fields)
   end
 
   defp load_edit(socket, config, id) do
-    record = Repo.get(config.schema, id)
-    form_fields = form_fields_for(config)
-    slug = socket.assigns.resource_slug
+    record     = Repo.get!(config.schema, id)
+    fieldsets  = FieldHelper.fieldset_fields(config.schema, config)
+    slug       = socket.assigns.resource_slug
+    inlines    = load_inlines(config, record.id)
 
     socket
-    |> assign(:page_title, "Edit #{config.label} ##{id}")
-    |> assign(:breadcrumb, [
-      {"Admin", "/admin"},
-      {config.label, "/admin/r/#{slug}"},
-      {"Edit ##{id}", nil}
-    ])
-    |> assign(:record, record)
-    |> assign(:form_fields, form_fields)
+    |> assign(:page_title,       "Edit #{config.label} ##{id}")
+    |> assign(:breadcrumb, [{"Admin", "/admin"}, {config.label, "/admin/r/#{slug}"}, {"Edit ##{id}", nil}])
+    |> assign(:record,           record)
+    |> assign(:fieldsets,        fieldsets)
+    |> assign(:inlines,          inlines)
     |> assign(:changeset_errors, %{})
-    |> init_autocomplete(form_fields, record)
+    |> assign(:collapsed_fieldsets, [])
+    |> init_autocomplete(flat_form_fields(fieldsets), record)
   end
 
   defp load_new(socket, config) do
-    form_fields = form_fields_for(config)
-    slug = socket.assigns.resource_slug
-    record = struct(config.schema)
+    fieldsets = FieldHelper.fieldset_fields(config.schema, config)
+    slug      = socket.assigns.resource_slug
+    record    = struct(config.schema)
 
     socket
-    |> assign(:page_title, "New #{config.label}")
+    |> assign(:page_title,       "New #{config.label_singular}")
     |> assign(:breadcrumb, [{"Admin", "/admin"}, {config.label, "/admin/r/#{slug}"}, {"New", nil}])
-    |> assign(:record, record)
-    |> assign(:form_fields, form_fields)
+    |> assign(:record,           record)
+    |> assign(:fieldsets,        fieldsets)
+    |> assign(:inlines,          [])
     |> assign(:changeset_errors, %{})
-    |> init_autocomplete(form_fields, record)
+    |> assign(:collapsed_fieldsets, [])
+    |> init_autocomplete(flat_form_fields(fieldsets), record)
   end
 
-  defp form_fields_for(config) do
-    all = FieldHelper.fields_for(config.schema)
-    readonly = config.readonly_fields || []
-    Enum.reject(all, fn f -> f.name in readonly end)
+  # Flatten fieldsets → list of fields
+  defp flat_form_fields(fieldsets) do
+    Enum.flat_map(fieldsets, fn {_title, _classes, fields} -> fields end)
+  end
+
+  defp load_inlines(config, parent_id) do
+    Enum.map(config.inlines, fn inline ->
+      records = FieldHelper.inline_records(inline, parent_id)
+      fields  = FieldHelper.inline_fields_for(inline)
+      %{inline: inline, records: records, fields: fields, new_rows: inline[:extra] || 1}
+    end)
   end
 
   # ---------------------------------------------------------------------------
-  # Data fetching (generic — bypasses context, queries schema directly)
+  # Data fetching
   # ---------------------------------------------------------------------------
 
-  defp fetch_list(config, q, page, sort_by, sort_dir, filters) do
-    import Ecto.Query
-
+  defp fetch_list(config, q, page, sort_by, sort_dir, filters, date_drill, pp) do
     base =
       from(r in config.schema)
       |> maybe_search(config, q)
       |> maybe_filter(config.schema, filters)
+      |> maybe_date_drill(config, date_drill)
 
     total = Repo.aggregate(base, :count)
 
-    offset_val = (page - 1) * @per_page
-    order_field = String.to_atom(sort_by)
+    offset_val      = (page - 1) * pp
+    order_field     = String.to_atom(sort_by)
     order_direction = String.to_atom(sort_dir)
 
     records =
       base
-      |> limit(@per_page)
+      |> limit(^pp)
       |> offset(^offset_val)
       |> order_by([r], [{^order_direction, field(r, ^order_field)}])
       |> Repo.all()
@@ -217,30 +263,22 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     {records, total}
   end
 
-  defp maybe_search(query, _config, ""), do: query
+  defp maybe_search(query, _config, ""),  do: query
   defp maybe_search(query, _config, nil), do: query
-
   defp maybe_search(query, config, q) do
-    import Ecto.Query
     fields = config.search_fields
-
     if fields == [] do
       query
     else
       like_q = "%#{q}%"
-
-      conditions =
-        Enum.reduce(fields, false, fn field, acc ->
-          dynamic([r], ilike(field(r, ^field), ^like_q) or ^acc)
-        end)
-
+      conditions = Enum.reduce(fields, false, fn f, acc ->
+        dynamic([r], ilike(field(r, ^f), ^like_q) or ^acc)
+      end)
       where(query, ^conditions)
     end
   end
 
   defp maybe_filter(query, schema_mod, filters) do
-    import Ecto.Query
-
     Enum.reduce(filters, query, fn {field_str, val}, q_acc ->
       if val == "" or val == nil do
         q_acc
@@ -254,163 +292,165 @@ defmodule QcommerceWeb.Admin.ResourceLive do
             where(q_acc, [r], field(r, ^field_atom) == ^bool_val)
 
           match?({:parameterized, {Ecto.Enum, _}}, type) or
-              match?({:parameterized, Ecto.Enum, _}, type) ->
+          match?({:parameterized, Ecto.Enum, _}, type) ->
             enum_val = String.to_atom(val)
             where(q_acc, [r], field(r, ^field_atom) == ^enum_val)
 
           true ->
-            where(q_acc, [r], field(r, ^field_atom) == ^val)
+            # Try integer parse for FK fields
+            case Integer.parse(val) do
+              {int_val, ""} -> where(q_acc, [r], field(r, ^field_atom) == ^int_val)
+              _             -> where(q_acc, [r], field(r, ^field_atom) == ^val)
+            end
         end
       end
     end)
   end
 
-  defp filterable_fields(schema_mod) do
-    fields = FieldHelper.fields_for(schema_mod)
-
-    Enum.filter(fields, fn f ->
-      f.type == :boolean or
-        match?({:parameterized, {Ecto.Enum, _}}, f.type) or
-        match?({:parameterized, Ecto.Enum, _}, f.type) or
-        f.input_type == :autocomplete
-    end)
+  defp maybe_date_drill(query, _config, date_drill) when map_size(date_drill) == 0, do: query
+  defp maybe_date_drill(query, config, date_drill) do
+    field_atom = config.date_hierarchy
+    if is_nil(field_atom), do: query, else: apply_date_drill(query, field_atom, date_drill)
   end
 
-  defp fetch_filter_options(schema_mod) do
-    filterable_fields(schema_mod)
-    |> Map.new(fn f ->
-      opts =
-        cond do
-          f.type == :boolean ->
-            [{"Yes", "true"}, {"No", "false"}]
-
-          match?({:parameterized, {Ecto.Enum, _}}, f.type) or
-              match?({:parameterized, Ecto.Enum, _}, f.type) ->
-            FieldHelper.enum_values(schema_mod, f.name)
-            |> Enum.map(fn val -> {String.capitalize(to_string(val)), to_string(val)} end)
-
-          f.input_type == :autocomplete ->
-            target_schema = f.assoc.schema
-
-            try do
-              import Ecto.Query
-
-              Repo.all(from(x in target_schema, limit: 50))
-              |> Enum.map(fn rec -> {assoc_label(rec), to_string(rec.id)} end)
-            rescue
-              _ -> []
-            end
-
-          true ->
-            []
-        end
-
-      {to_string(f.name), opts}
-    end)
+  defp apply_date_drill(query, field_atom, %{"year" => y, "month" => m, "day" => d}) do
+    year  = String.to_integer(y)
+    month = String.to_integer(m)
+    day   = String.to_integer(d)
+    where(query, [r],
+      fragment("extract(year  from ?)::int", field(r, ^field_atom)) == ^year and
+      fragment("extract(month from ?)::int", field(r, ^field_atom)) == ^month and
+      fragment("extract(day   from ?)::int", field(r, ^field_atom)) == ^day
+    )
   end
+  defp apply_date_drill(query, field_atom, %{"year" => y, "month" => m}) do
+    year  = String.to_integer(y)
+    month = String.to_integer(m)
+    where(query, [r],
+      fragment("extract(year  from ?)::int", field(r, ^field_atom)) == ^year and
+      fragment("extract(month from ?)::int", field(r, ^field_atom)) == ^month
+    )
+  end
+  defp apply_date_drill(query, field_atom, %{"year" => y}) do
+    year = String.to_integer(y)
+    where(query, [r],
+      fragment("extract(year from ?)::int", field(r, ^field_atom)) == ^year
+    )
+  end
+  defp apply_date_drill(query, _, _), do: query
 
-  defp assoc_label(nil), do: ""
+  defp build_date_hierarchy_counts(config, date_drill) do
+    field_atom = config.date_hierarchy
+    _base = from(r in config.schema)
 
-  defp assoc_label(record) do
-    cond do
-      Map.has_key?(record, :name) -> record.name
-      Map.has_key?(record, :label) -> record.label
-      Map.has_key?(record, :title) -> record.title
-      Map.has_key?(record, :full_name) -> record.full_name
-      Map.has_key?(record, :code) -> "#{record.code}"
-      Map.has_key?(record, :email) -> record.email
-      Map.has_key?(record, :sku) -> "[#{record.sku}]"
-      true -> "##{record.id}"
+    try do
+      cond do
+        map_size(date_drill) == 0 ->
+          # Year level
+          Repo.all(
+            from r in config.schema,
+            group_by: fragment("extract(year from ?)::int", field(r, ^field_atom)),
+            select: {fragment("extract(year from ?)::int", field(r, ^field_atom)), count(r.id)},
+            order_by: fragment("extract(year from ?)::int", field(r, ^field_atom))
+          )
+          |> Enum.map(fn {y, c} -> {:year, y, c} end)
+
+        Map.has_key?(date_drill, "year") and not Map.has_key?(date_drill, "month") ->
+          y = String.to_integer(date_drill["year"])
+          Repo.all(
+            from r in config.schema,
+            where: fragment("extract(year from ?)::int", field(r, ^field_atom)) == ^y,
+            group_by: fragment("extract(month from ?)::int", field(r, ^field_atom)),
+            select: {fragment("extract(month from ?)::int", field(r, ^field_atom)), count(r.id)},
+            order_by: fragment("extract(month from ?)::int", field(r, ^field_atom))
+          )
+          |> Enum.map(fn {m, c} -> {:month, m, c} end)
+
+        true -> []
+      end
+    rescue
+      _ -> []
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Autocomplete helpers
+  # ---------------------------------------------------------------------------
 
   defp init_autocomplete(socket, form_fields, record) do
     autocompletes = Enum.filter(form_fields, &(&1.input_type == :autocomplete))
 
     {searches, results, selected} =
       Enum.reduce(autocompletes, {%{}, %{}, %{}}, fn field, {s_acc, r_acc, sel_acc} ->
-        import Ecto.Query
-        initial_list = Repo.all(from(x in field.assoc.schema, limit: 10))
-        current_val = Map.get(record || %{}, field.name)
-        selected_rec = if current_val, do: Repo.get(field.assoc.schema, current_val), else: nil
+        initial_list  = Repo.all(from(x in field.assoc.schema, limit: 10))
+        current_val   = Map.get(record || %{}, field.name)
+        selected_rec  = if current_val, do: Repo.get(field.assoc.schema, current_val), else: nil
 
         {
-          Map.put(s_acc, to_string(field.name), ""),
-          Map.put(r_acc, to_string(field.name), initial_list),
+          Map.put(s_acc,   to_string(field.name), ""),
+          Map.put(r_acc,   to_string(field.name), initial_list),
           Map.put(sel_acc, to_string(field.name), selected_rec)
         }
       end)
 
     socket
-    |> assign(:autocomplete_search, searches)
-    |> assign(:autocomplete_results, results)
+    |> assign(:autocomplete_search,   searches)
+    |> assign(:autocomplete_results,  results)
     |> assign(:autocomplete_selected, selected)
-    |> assign(:autocomplete_open, Map.new(autocompletes, &{to_string(&1.name), false}))
+    |> assign(:autocomplete_open,     Map.new(autocompletes, &{to_string(&1.name), false}))
   end
 
   # ---------------------------------------------------------------------------
-  # Events
+  # Event Handlers
   # ---------------------------------------------------------------------------
 
   @impl true
   def handle_event("search", %{"q" => q}, socket) do
-    path = current_path(socket, %{"q" => q, "page" => "1"})
-    {:noreply, push_patch(socket, to: path)}
+    {:noreply, push_patch(socket, to: current_path(socket, %{"q" => q, "page" => "1"}))}
   end
 
   def handle_event("page", %{"p" => p}, socket) do
-    path = current_path(socket, %{"page" => to_string(p)})
-    {:noreply, push_patch(socket, to: path)}
+    {:noreply, push_patch(socket, to: current_path(socket, %{"page" => to_string(p)}))}
   end
 
   def handle_event("sort", %{"field" => field_name}, socket) do
-    current_by = socket.assigns.sort_by
+    current_by  = socket.assigns.sort_by
     current_dir = socket.assigns.sort_dir
 
     {new_by, new_dir} =
-      if current_by == field_name do
-        {field_name, if(current_dir == "asc", do: "desc", else: "asc")}
-      else
-        {field_name, "asc"}
-      end
+      if current_by == field_name,
+        do:   {field_name, if(current_dir == "asc", do: "desc", else: "asc")},
+        else: {field_name, "asc"}
 
-    path = current_path(socket, %{"sort_by" => new_by, "sort_dir" => new_dir, "page" => "1"})
-    {:noreply, push_patch(socket, to: path)}
+    {:noreply, push_patch(socket, to: current_path(socket, %{"sort_by" => new_by, "sort_dir" => new_dir, "page" => "1"}))}
   end
 
-  # Close all filters then toggle the one requested
+  # Filter dropdown
   def handle_event("filter_toggle", %{"field" => field_name}, socket) do
-    current = Map.get(socket.assigns.filter_open, field_name, false)
-    # close all first, then toggle the target
-    new_open =
-      socket.assigns.filter_open
-      |> Map.new(fn {k, _} -> {k, false} end)
-      |> Map.put(field_name, !current)
-
+    current  = Map.get(socket.assigns.filter_open, field_name, false)
+    new_open = socket.assigns.filter_open
+               |> Map.new(fn {k, _} -> {k, false} end)
+               |> Map.put(field_name, !current)
     {:noreply, assign(socket, :filter_open, new_open)}
   end
 
   def handle_event("filter_search", %{"field" => field_name, "value" => q}, socket) do
-    new_search = Map.put(socket.assigns.filter_search, field_name, q)
-    {:noreply, assign(socket, :filter_search, new_search)}
+    {:noreply, assign(socket, :filter_search, Map.put(socket.assigns.filter_search, field_name, q))}
   end
 
   def handle_event("filter_pick", %{"field" => field_name, "value" => val}, socket) do
     new_filters =
-      if val == "" do
-        Map.delete(socket.assigns.filters, field_name)
-      else
-        Map.put(socket.assigns.filters, field_name, val)
-      end
+      if val == "",
+        do:   Map.delete(socket.assigns.filters, field_name),
+        else: Map.put(socket.assigns.filters, field_name, val)
 
-    # Close the dropdown and clear its search
-    new_open = Map.put(socket.assigns.filter_open, field_name, false)
+    new_open   = Map.put(socket.assigns.filter_open,   field_name, false)
     new_search = Map.put(socket.assigns.filter_search, field_name, "")
 
-    slug = socket.assigns.resource_slug
-    sort_by = socket.assigns.sort_by
+    slug     = socket.assigns.resource_slug
+    sort_by  = socket.assigns.sort_by
     sort_dir = socket.assigns.sort_dir
-    q = socket.assigns.search
+    q        = socket.assigns.search
 
     query_params =
       %{"q" => q, "page" => "1", "sort_by" => sort_by, "sort_dir" => sort_dir}
@@ -419,181 +459,132 @@ defmodule QcommerceWeb.Admin.ResourceLive do
 
     socket =
       socket
-      |> assign(:filter_open, new_open)
+      |> assign(:filter_open,   new_open)
       |> assign(:filter_search, new_search)
-      |> assign(:filters, new_filters)
+      |> assign(:filters,       new_filters)
 
     {:noreply, push_patch(socket, to: "/admin/r/#{slug}?#{query_params}")}
   end
 
-  # Legacy — kept so existing plain-select forms still work
-  def handle_event("filter_select", %{"field" => field_name, "value" => val}, socket) do
-    handle_event("filter_pick", %{"field" => field_name, "value" => val}, socket)
+  def handle_event("filter_clear_all", _params, socket) do
+    slug = socket.assigns.resource_slug
+    {:noreply, push_patch(socket, to: "/admin/r/#{slug}")}
   end
 
+  # Date hierarchy
+  def handle_event("date_drill", params, socket) do
+    slug = socket.assigns.resource_slug
+    drill_params = Map.take(params, ["year", "month", "day"])
+    query = Map.merge(%{"page" => "1"}, drill_params) |> URI.encode_query()
+    {:noreply, push_patch(socket, to: "/admin/r/#{slug}?#{query}")}
+  end
+
+  # Bulk selection
   def handle_event("toggle_select", %{"id" => id}, socket) do
-    id_str = to_string(id)
+    id_str   = to_string(id)
     selected = socket.assigns.selected_ids
-
-    new_selected =
-      if id_str in selected do
-        List.delete(selected, id_str)
-      else
-        [id_str | selected]
-      end
-
-    {:noreply, assign(socket, :selected_ids, new_selected)}
+    new_sel  = if id_str in selected, do: List.delete(selected, id_str), else: [id_str | selected]
+    {:noreply, assign(socket, :selected_ids, new_sel)}
   end
 
   def handle_event("toggle_select_all", _params, socket) do
-    records = socket.assigns.records
-    selected = socket.assigns.selected_ids
-
-    all_page_ids = Enum.map(records, &to_string(&1.id))
-    all_selected? = Enum.all?(all_page_ids, &(&1 in selected))
-
-    new_selected =
-      if all_selected? do
-        selected -- all_page_ids
-      else
-        Enum.uniq(selected ++ all_page_ids)
-      end
-
-    {:noreply, assign(socket, :selected_ids, new_selected)}
+    all_ids    = Enum.map(socket.assigns.records, &to_string(&1.id))
+    selected   = socket.assigns.selected_ids
+    all_sel?   = Enum.all?(all_ids, &(&1 in selected))
+    new_sel    = if all_sel?, do: selected -- all_ids, else: Enum.uniq(selected ++ all_ids)
+    {:noreply, assign(socket, :selected_ids, new_sel)}
   end
 
+  # Built-in bulk delete
   def handle_event("bulk_action", %{"action" => "delete"}, socket) do
     config = socket.assigns.config
-    ids = socket.assigns.selected_ids
+    ids    = socket.assigns.selected_ids
 
-    import Ecto.Query
-    query = from(r in config.schema, where: r.id in ^ids)
-
-    case Repo.delete_all(query) do
+    case Repo.delete_all(from(r in config.schema, where: r.id in ^ids)) do
       {count, _} ->
-        socket =
-          socket
-          |> put_flash(:info, "Successfully deleted #{count} records.")
-          |> assign(:selected_ids, [])
-          |> push_patch(to: current_path(socket, %{"page" => "1"}))
-
-        {:noreply, socket}
+        {:noreply,
+         socket
+         |> put_flash(:info, "Deleted #{count} record(s).")
+         |> assign(:selected_ids, [])
+         |> push_patch(to: current_path(socket, %{"page" => "1"}))}
 
       _ ->
         {:noreply, put_flash(socket, :error, "Bulk delete failed.")}
     end
   end
 
-  def handle_event("bulk_action", _, socket) do
-    {:noreply, socket}
+  # Custom bulk actions
+  def handle_event("bulk_action", %{"action" => "export_csv"}, socket) do
+    config  = socket.assigns.config
+    records = socket.assigns.records
+    fields  = socket.assigns.list_fields
+
+    csv_content = build_csv(records, fields)
+    filename    = "#{config.label |> String.downcase() |> String.replace(" ", "_")}_export.csv"
+
+    {:noreply,
+     socket
+     |> push_event("download_csv", %{content: csv_content, filename: filename})
+     |> put_flash(:info, "CSV download triggered.")}
   end
 
-  def handle_event("autocomplete_toggle", %{"field" => field_name}, socket) do
-    open = socket.assigns.autocomplete_open
-    current = Map.get(open, field_name, false)
-    {:noreply, assign(socket, :autocomplete_open, Map.put(open, field_name, !current))}
-  end
+  def handle_event("bulk_action", %{"action" => action_id}, socket) do
+    config  = socket.assigns.config
+    ids     = socket.assigns.selected_ids
+    schema  = config.schema
 
-  def handle_event("autocomplete_search", %{"field" => field_name, "value" => query}, socket) do
-    field = Enum.find(socket.assigns.form_fields, &(to_string(&1.name) == field_name))
+    result =
+      case action_id do
+        "mark_active" ->
+          Repo.update_all(from(r in schema, where: r.id in ^ids), set: [is_active: true])
+          {:ok, "Marked #{length(ids)} record(s) active."}
 
-    if field do
-      target_schema = field.assoc.schema
-      import Ecto.Query
+        "mark_inactive" ->
+          Repo.update_all(from(r in schema, where: r.id in ^ids), set: [is_active: false])
+          {:ok, "Marked #{length(ids)} record(s) inactive."}
 
-      q = from(x in target_schema) |> limit(10)
+        "activate_users" ->
+          Repo.update_all(from(r in schema, where: r.id in ^ids), set: [is_active: true])
+          {:ok, "Activated #{length(ids)} user(s)."}
 
-      fields_to_search =
-        cond do
-          function_exported?(target_schema, :__schema__, 2) ->
-            schema_fields = target_schema.__schema__(:fields)
-            Enum.filter([:name, :title, :full_name, :code, :email, :sku], &(&1 in schema_fields))
+        "deactivate_users" ->
+          Repo.update_all(from(r in schema, where: r.id in ^ids), set: [is_active: false])
+          {:ok, "Deactivated #{length(ids)} user(s)."}
 
-          true ->
-            []
-        end
+        _ ->
+          {:error, "Unknown action: #{action_id}"}
+      end
 
-      matching_query =
-        if query != "" and fields_to_search != [] do
-          like_q = "%#{query}%"
+    case result do
+      {:ok, msg} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, msg)
+         |> assign(:selected_ids, [])
+         |> push_patch(to: current_path(socket, %{}))}
 
-          conditions =
-            Enum.reduce(fields_to_search, false, fn f, acc ->
-              dynamic([x], ilike(field(x, ^f), ^like_q) or ^acc)
-            end)
-
-          where(q, ^conditions)
-        else
-          q
-        end
-
-      results = Repo.all(matching_query)
-
-      socket =
-        socket
-        |> assign(
-          :autocomplete_search,
-          Map.put(socket.assigns.autocomplete_search, field_name, query)
-        )
-        |> assign(
-          :autocomplete_results,
-          Map.put(socket.assigns.autocomplete_results, field_name, results)
-        )
-        |> assign(:autocomplete_open, Map.put(socket.assigns.autocomplete_open, field_name, true))
-
-      {:noreply, socket}
-    else
-      {:noreply, socket}
+      {:error, msg} ->
+        {:noreply, put_flash(socket, :error, msg)}
     end
   end
 
-  def handle_event("autocomplete_select", %{"field" => field_name, "id" => id}, socket) do
-    field = Enum.find(socket.assigns.form_fields, &(to_string(&1.name) == field_name))
-
-    if field do
-      selected_rec = Repo.get(field.assoc.schema, id)
-      updated_record = Map.put(socket.assigns.record, field.name, id)
-
-      socket =
-        socket
-        |> assign(:record, updated_record)
-        |> assign(
-          :autocomplete_selected,
-          Map.put(socket.assigns.autocomplete_selected, field_name, selected_rec)
-        )
-        |> assign(
-          :autocomplete_open,
-          Map.put(socket.assigns.autocomplete_open, field_name, false)
-        )
-
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+  # Fieldset collapse toggle
+  def handle_event("toggle_fieldset", %{"title" => title}, socket) do
+    collapsed = socket.assigns[:collapsed_fieldsets] || []
+    new_collapsed =
+      if title in collapsed,
+        do:   List.delete(collapsed, title),
+        else: [title | collapsed]
+    {:noreply, assign(socket, :collapsed_fieldsets, new_collapsed)}
   end
 
-  def handle_event("autocomplete_clear", %{"field" => field_name}, socket) do
-    field = Enum.find(socket.assigns.form_fields, &(to_string(&1.name) == field_name))
+  # Delete confirmation modal
+  def handle_event("confirm_delete", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :delete_confirm_id, id)}
+  end
 
-    if field do
-      updated_record = Map.put(socket.assigns.record, field.name, nil)
-
-      socket =
-        socket
-        |> assign(:record, updated_record)
-        |> assign(
-          :autocomplete_selected,
-          Map.put(socket.assigns.autocomplete_selected, field_name, nil)
-        )
-        |> assign(
-          :autocomplete_open,
-          Map.put(socket.assigns.autocomplete_open, field_name, false)
-        )
-
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+  def handle_event("cancel_delete", _params, socket) do
+    {:noreply, assign(socket, :delete_confirm_id, nil)}
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
@@ -604,26 +595,104 @@ defmodule QcommerceWeb.Admin.ResourceLive do
       {:ok, _} ->
         {:noreply,
          socket
+         |> assign(:delete_confirm_id, nil)
          |> put_flash(:info, "Record ##{id} deleted.")
          |> push_navigate(to: "/admin/r/#{socket.assigns.resource_slug}")}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Could not delete record ##{id}.")}
+        {:noreply,
+         socket
+         |> assign(:delete_confirm_id, nil)
+         |> put_flash(:error, "Could not delete record ##{id} — it may have dependent records.")}
     end
   end
 
+  # Autocomplete
+  def handle_event("autocomplete_toggle", %{"field" => field_name}, socket) do
+    open    = socket.assigns.autocomplete_open
+    current = Map.get(open, field_name, false)
+    {:noreply, assign(socket, :autocomplete_open, Map.put(open, field_name, !current))}
+  end
+
+  def handle_event("autocomplete_search", %{"field" => field_name, "value" => query}, socket) do
+    all_fields = flat_form_fields(socket.assigns.fieldsets)
+    field      = Enum.find(all_fields, &(to_string(&1.name) == field_name))
+
+    if field do
+      target_schema   = field.assoc.schema
+      schema_fields   = target_schema.__schema__(:fields)
+      searchable      = Enum.filter([:name, :title, :full_name, :code, :email, :sku], &(&1 in schema_fields))
+
+      q = from(x in target_schema) |> limit(10)
+
+      matching_query =
+        if query != "" and searchable != [] do
+          like_q     = "%#{query}%"
+          conditions = Enum.reduce(searchable, false, fn f, acc ->
+            dynamic([x], ilike(field(x, ^f), ^like_q) or ^acc)
+          end)
+          where(q, ^conditions)
+        else
+          q
+        end
+
+      results = Repo.all(matching_query)
+
+      {:noreply,
+       socket
+       |> assign(:autocomplete_search,  Map.put(socket.assigns.autocomplete_search,  field_name, query))
+       |> assign(:autocomplete_results, Map.put(socket.assigns.autocomplete_results, field_name, results))
+       |> assign(:autocomplete_open,    Map.put(socket.assigns.autocomplete_open,    field_name, true))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("autocomplete_select", %{"field" => field_name, "id" => id}, socket) do
+    all_fields = flat_form_fields(socket.assigns.fieldsets)
+    field      = Enum.find(all_fields, &(to_string(&1.name) == field_name))
+
+    if field do
+      selected_rec    = Repo.get(field.assoc.schema, id)
+      updated_record  = Map.put(socket.assigns.record, field.name, id)
+
+      {:noreply,
+       socket
+       |> assign(:record,              updated_record)
+       |> assign(:autocomplete_selected, Map.put(socket.assigns.autocomplete_selected, field_name, selected_rec))
+       |> assign(:autocomplete_open,    Map.put(socket.assigns.autocomplete_open,    field_name, false))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("autocomplete_clear", %{"field" => field_name}, socket) do
+    all_fields = flat_form_fields(socket.assigns.fieldsets)
+    field      = Enum.find(all_fields, &(to_string(&1.name) == field_name))
+
+    if field do
+      updated_record = Map.put(socket.assigns.record, field.name, nil)
+
+      {:noreply,
+       socket
+       |> assign(:record,              updated_record)
+       |> assign(:autocomplete_selected, Map.put(socket.assigns.autocomplete_selected, field_name, nil))
+       |> assign(:autocomplete_open,    Map.put(socket.assigns.autocomplete_open,    field_name, false))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Save (create / update)
   def handle_event("save", %{"record" => attrs}, socket) do
     config = socket.assigns.config
     record = socket.assigns.record
-    slug = socket.assigns.resource_slug
+    slug   = socket.assigns.resource_slug
 
-    # Choose the right changeset fn — default is :changeset/2
     cs_fn = fn struct, a ->
-      if function_exported?(config.schema, :changeset, 2) do
-        config.schema.changeset(struct, a)
-      else
-        Ecto.Changeset.cast(struct, a, [])
-      end
+      if function_exported?(config.schema, :changeset, 2),
+        do:   config.schema.changeset(struct, a),
+        else: Ecto.Changeset.cast(struct, a, [])
     end
 
     result =
@@ -635,204 +704,267 @@ defmodule QcommerceWeb.Admin.ResourceLive do
 
     case result do
       {:ok, saved} ->
+        # Save inlines if present
+        save_inlines(config, saved.id, attrs)
+
         {:noreply,
          socket
-         |> put_flash(:info, "Saved successfully.")
+         |> put_flash(:info, "#{config.label_singular} saved successfully.")
          |> push_navigate(to: "/admin/r/#{slug}/#{saved.id}")}
 
       {:error, %Ecto.Changeset{} = cs} ->
-        errors =
-          Ecto.Changeset.traverse_errors(cs, fn {msg, opts} ->
-            Enum.reduce(opts, msg, fn {k, v}, acc ->
-              String.replace(acc, "%{#{k}}", to_string(v))
-            end)
-          end)
-
+        errors = Ecto.Changeset.traverse_errors(cs, fn {msg, opts} ->
+          Enum.reduce(opts, msg, fn {k, v}, acc -> String.replace(acc, "%{#{k}}", to_string(v)) end)
+        end)
         {:noreply, assign(socket, :changeset_errors, errors)}
     end
   end
 
-  defp current_path(socket, extra_params) do
-    slug = socket.assigns.resource_slug
-    q = socket.assigns.search
-    page = socket.assigns.page
-    sort_by = socket.assigns.sort_by
-    sort_dir = socket.assigns.sort_dir
+  # ---------------------------------------------------------------------------
+  # Inline save helper
+  # ---------------------------------------------------------------------------
 
-    query_params =
+  defp save_inlines(_config, _parent_id, attrs) do
+    # Inline data arrives as "inlines" → "0" → %{...fields...}
+    inline_data = Map.get(attrs, "inlines", %{})
+
+    Enum.each(inline_data, fn {_idx_str, row_attrs} ->
+      case Map.get(row_attrs, "__inline_schema") do
+        nil -> :ok
+        schema_str ->
+          schema = String.to_existing_atom(schema_str)
+          id_str = Map.get(row_attrs, "id", "")
+          clean  = Map.drop(row_attrs, ["id", "__inline_schema", "_delete"])
+          should_delete = Map.get(row_attrs, "_delete") == "true"
+
+          cond do
+            id_str != "" and should_delete ->
+              case Repo.get(schema, id_str) do
+                nil -> :ok
+                rec -> Repo.delete(rec)
+              end
+
+            id_str != "" ->
+              case Repo.get(schema, id_str) do
+                nil -> :ok
+                rec ->
+                  if function_exported?(schema, :changeset, 2),
+                    do:   schema.changeset(rec, stringify_keys(clean)) |> Repo.update(),
+                    else: :ok
+              end
+
+            not should_delete and map_size(clean) > 0 ->
+              if function_exported?(schema, :changeset, 2) do
+                struct(schema) |> schema.changeset(stringify_keys(clean)) |> Repo.insert()
+              end
+
+            true -> :ok
+          end
+      end
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # CSV export helper
+  # ---------------------------------------------------------------------------
+
+  defp build_csv(records, fields) do
+    header = Enum.map(fields, &to_string(&1.label)) |> Enum.join(",")
+    rows =
+      Enum.map(records, fn record ->
+        Enum.map(fields, fn field ->
+          val = Map.get(record, field.name) |> FieldHelper.format_value() |> to_string()
+          "\"#{String.replace(val, "\"", "\"\"")}\""
+        end)
+        |> Enum.join(",")
+      end)
+    Enum.join([header | rows], "\n")
+  end
+
+  # ---------------------------------------------------------------------------
+  # URL helpers
+  # ---------------------------------------------------------------------------
+
+  defp current_path(socket, extra_params) do
+    slug     = socket.assigns.resource_slug
+    q        = socket.assigns[:search]    || ""
+    page     = socket.assigns[:page]      || 1
+    sort_by  = socket.assigns[:sort_by]   || "id"
+    sort_dir = socket.assigns[:sort_dir]  || "desc"
+    filters  = socket.assigns[:filters]   || %{}
+
+    params =
       %{"q" => q, "page" => to_string(page), "sort_by" => sort_by, "sort_dir" => sort_dir}
-      |> Map.merge(socket.assigns.filters)
+      |> Map.merge(filters)
       |> Map.merge(extra_params)
       |> URI.encode_query()
 
-    "/admin/r/#{slug}?#{query_params}"
+    "/admin/r/#{slug}?#{params}"
   end
 
-  defp stringify_keys(map) do
+  defp stringify_keys(map) when is_map(map) do
     Map.new(map, fn {k, v} -> {to_string(k), v} end)
   end
 
   # ---------------------------------------------------------------------------
-  # render/1 — dispatches to sub-renders
+  # Render dispatcher
   # ---------------------------------------------------------------------------
 
   @impl true
   def render(assigns) do
-    # Guard: handle_params hasn't fired yet
     if Map.get(assigns, :action) == nil do
       ~H"""
-      <div style="padding:40px;color:var(--adm-text2);">Loading…</div>
+      <div style="padding:40px;color:var(--adm-text2);display:flex;align-items:center;gap:10px;">
+        <span class="adm-spinner"></span> Loading…
+      </div>
       """
     else
       case assigns.action do
         :list -> render_list(assigns)
         :show -> render_show(assigns)
         :edit -> render_form(assigns, :edit)
-        :new -> render_form(assigns, :new)
+        :new  -> render_form(assigns, :new)
       end
     end
   end
 
-  # ── List view ──────────────────────────────────────────────────────────────
+  # ===========================================================================
+  # LIST VIEW
+  # ===========================================================================
 
   defp render_list(assigns) do
     ~H"""
-    <div
-      class="adm-page-header"
-      style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;"
-    >
+    <!-- Delete confirmation modal -->
+    <%= if @delete_confirm_id do %>
+      <div style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;" phx-click="cancel_delete">
+        <div style="background:var(--adm-card);border:1px solid var(--adm-border);border-radius:16px;padding:32px;width:400px;max-width:90vw;" phx-click-away="cancel_delete">
+          <div style="display:flex;align-items:center;gap:8px;font-size:18px;font-weight:700;margin-bottom:8px;color:var(--adm-red);">
+            <QcommerceWeb.Layouts.sidebar_icon icon="warning" class="w-5 h-5" />
+            Confirm Delete
+          </div>
+          <p style="color:var(--adm-text2);font-size:13.5px;margin-bottom:24px;">
+            Are you sure you want to delete record <strong style="color:var(--adm-text);">#<%= @delete_confirm_id %></strong>?
+            This action <strong style="color:var(--adm-red);">cannot be undone</strong>.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button phx-click="cancel_delete" class="adm-btn adm-btn-ghost">Cancel</button>
+            <button phx-click="delete" phx-value-id={@delete_confirm_id} class="adm-btn adm-btn-danger">Delete</button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Page header -->
+    <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <div>
         <h1 class="adm-page-title" style="display:inline-flex;align-items:center;gap:8px;">
           <QcommerceWeb.Layouts.sidebar_icon icon={@config.icon} class="w-6 h-6" />
-          {@config.label}
+          <%= @config.label %>
         </h1>
         <p class="adm-page-sub">
-          {@total} records total
+          <%= if @config.show_full_result_count do %>
+            <strong style="color:var(--adm-text);"><%= @total %></strong> records
+          <% end %>
           <%= if map_size(@filters) > 0 do %>
-            <span style="color:var(--adm-accent2);margin-left:6px;">
-              · {map_size(@filters)} filter(s) active
-            </span>
+            <span style="color:var(--adm-accent2);"> · <%= map_size(@filters) %> filter(s) active</span>
+          <% end %>
+          <%= if length(@selected_ids) > 0 do %>
+            <span style="color:var(--adm-yellow);"> · <%= length(@selected_ids) %> selected</span>
           <% end %>
         </p>
       </div>
       <%= if :edit in (@config.actions || [:show, :edit, :delete]) do %>
         <a href={"/admin/r/#{@resource_slug}/new"} class="adm-btn adm-btn-primary">
-          + New {@config.label |> String.replace(~r/s$/, "")}
+          + New <%= @config.label_singular %>
         </a>
       <% end %>
     </div>
 
+    <!-- Date hierarchy breadcrumb -->
+    <%= if @config.date_hierarchy && @date_counts != [] do %>
+      <div class="adm-card" style="margin-bottom:16px;padding:12px 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;font-weight:600;color:var(--adm-text3);text-transform:uppercase;letter-spacing:.8px;margin-right:4px;">Date</span>
+        <%= if map_size(@date_drill) > 0 do %>
+          <button phx-click="date_drill" class="adm-date-crumb">All</button>
+          <QcommerceWeb.Layouts.sidebar_icon icon="chevron-right-small" class="w-3 h-3" style="color:var(--adm-text3);" />
+        <% end %>
+        <%= for entry <- @date_counts do %>
+          <% {type, val, count} = entry %>
+          <% label = case type do
+            :year  -> "#{val}"
+            :month -> month_name(val)
+            _      -> "#{val}"
+          end %>
+          <% drill_params = case type do
+            :year  -> %{"year" => to_string(val)}
+            :month -> %{"year" => @date_drill["year"], "month" => to_string(val)}
+            _      -> %{}
+          end %>
+          <button phx-click="date_drill" phx-value-year={drill_params["year"]}
+            phx-value-month={drill_params["month"]}
+            class={"adm-date-crumb #{if drill_params == @date_drill, do: "active"}"}>
+            <%= label %> <span style="font-size:10px;opacity:.6;">(<%= count %>)</span>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Main card -->
     <div class="adm-card">
       <!-- Toolbar -->
       <div class="adm-toolbar">
         <form phx-submit="search" style="display:contents;">
           <div class="adm-search-wrap">
-            <span class="adm-search-icon">🔍</span>
-            <input
-              id="adm-search"
-              type="text"
-              name="q"
-              value={@search}
-              placeholder={"Search #{@config.label |> String.downcase()}…"}
-              class="adm-search"
-              phx-debounce="350"
-              phx-change="search"
-            />
+            <span class="adm-search-icon"><QcommerceWeb.Layouts.sidebar_icon icon="search" class="w-4 h-4" /></span>
+            <input id="adm-search" type="text" name="q" value={@search}
+              placeholder={"Search #{String.downcase(@config.label)}…"}
+              class="adm-search" phx-debounce="300" phx-change="search" />
           </div>
         </form>
 
+        <!-- Filter dropdowns -->
         <%= for {field_name, opts} <- @filter_options do %>
-          <% is_open = Map.get(@filter_open, field_name, false) %>
-          <% search_q = Map.get(@filter_search, field_name, "") %>
-          <% active_val = Map.get(@filters, field_name, "") %>
-          <% field_label = Qcommerce.Admin.FieldHelper.humanize(field_name) %>
-          <% active_label =
-            if active_val != "",
-              do: Enum.find_value(opts, active_val, fn {l, v} -> if v == active_val, do: l end),
-              else: nil %>
+          <% is_open    = Map.get(@filter_open,   field_name, false) %>
+          <% search_q   = Map.get(@filter_search,  field_name, "") %>
+          <% active_val = Map.get(@filters,        field_name, "") %>
+          <% field_label = FieldHelper.humanize(field_name) %>
+          <% active_label = if active_val != "",
+               do:   Enum.find_value(opts, active_val, fn {l, v} -> if v == active_val, do: l end),
+               else: nil %>
 
-          <div style="position:relative;z-index:#{if is_open, do: 200, else: 10};">
-            
-            <button
-              type="button"
-              phx-click="filter_toggle"
-              phx-value-field={field_name}
-              style={"display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;
-                      border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
-                      border:1px solid #{if active_val != "", do: "var(--adm-accent)", else: "var(--adm-border)"};
-                      background:#{if active_val != "", do: "rgba(99,102,241,.15)", else: "var(--adm-card)"};
-                      color:#{if active_val != "", do: "var(--adm-accent2)", else: "var(--adm-text2)"};
-                      white-space:nowrap;transition:all .15s;"}
-            >
-              {field_label}
-              <%= if active_label do %>
-                <span style="background:var(--adm-accent);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;">
-                  {active_label}
-                </span>
+          <div style="position:relative;">
+            <button type="button"
+              phx-click="filter_toggle" phx-value-field={field_name}
+              class={"adm-filter-btn #{if active_val != "", do: "active"}"}>
+              <%= field_label %>
+              <%= if active_label, do: ": #{active_label}" %>
+              <%= if is_open do %>
+                <QcommerceWeb.Layouts.sidebar_icon icon="chevron-up" class="w-3 h-3" />
+              <% else %>
+                <QcommerceWeb.Layouts.sidebar_icon icon="chevron-down" class="w-3 h-3" />
               <% end %>
-              <span style="font-size:10px;opacity:.6;">{if is_open, do: "▴", else: "▾"}</span>
             </button>
 
             <%= if is_open do %>
-              <div style="position:absolute;top:calc(100% + 6px);left:0;min-width:200px;
-                          background:var(--adm-card);border:1px solid var(--adm-border);
-                          border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);
-                          overflow:hidden;">
-                
-                <div style="padding:8px 8px 4px;">
-                  <div style="position:relative;">
-                    <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--adm-text3);font-size:12px;">
-                      🔍
-                    </span>
-                    <input
-                      type="text"
-                      value={search_q}
-                      placeholder={"Search #{field_label}…"}
-                      phx-keyup="filter_search"
-                      phx-value-field={field_name}
-                      phx-debounce="150"
-                      style="width:100%;background:var(--adm-surface);border:1px solid var(--adm-border);
-                             border-radius:7px;color:var(--adm-text);padding:6px 10px 6px 30px;
-                             font-size:12px;outline:none;"
-                    />
-                  </div>
+              <div class="adm-filter-dropdown">
+                <div style="padding:8px;">
+                  <input type="text" value={search_q}
+                    placeholder="Search…"
+                    class="adm-filter-search"
+                    phx-keyup="filter_search" phx-value-field={field_name} phx-debounce="150" />
                 </div>
-
-                <div style="max-height:200px;overflow-y:auto;padding:4px 4px 6px;">
-                  
-                  <div
-                    phx-click="filter_pick"
-                    phx-value-field={field_name}
-                    phx-value-value=""
-                    style={"cursor:pointer;padding:7px 12px;border-radius:7px;font-size:12px;
-                            color:#{if active_val == "", do: "var(--adm-accent2)", else: "var(--adm-text3)"};
-                            background:#{if active_val == "", do: "rgba(99,102,241,.12)", else: "transparent"};
-                            display:flex;align-items:center;gap:6px;"}
-                  >
-                    <span style="width:14px;text-align:center;">
-                      {if active_val == "", do: "✓", else: ""}
-                    </span>
-                    All {field_label}
-                  </div>
-
-                  <%= for {label, val} <- Enum.filter(opts, fn {l, _} ->
-                        search_q == "" or String.contains?(String.downcase(l), String.downcase(search_q))
-                      end) do %>
-                    <div
-                      phx-click="filter_pick"
-                      phx-value-field={field_name}
-                      phx-value-value={val}
-                      style={"cursor:pointer;padding:7px 12px;border-radius:7px;font-size:12px;
-                              color:#{if val == active_val, do: "var(--adm-accent2)", else: "var(--adm-text2)"};
-                              background:#{if val == active_val, do: "rgba(99,102,241,.12)", else: "transparent"};
-                              display:flex;align-items:center;gap:6px;transition:background .1s;"}
-                      class="adm-autocomplete-option"
-                    >
-                      <span style="width:14px;text-align:center;">
-                        {if val == active_val, do: "✓", else: ""}
-                      </span>
-                      {label}
-                    </div>
+                <div style="max-height:220px;overflow-y:auto;">
+                  <button type="button"
+                    phx-click="filter_pick" phx-value-field={field_name} phx-value-value=""
+                    class={"adm-filter-option #{if active_val == "", do: "selected"}"}>
+                    Any <%= field_label %>
+                  </button>
+                  <%= for {label, val} <- Enum.filter(opts, fn {l, _} -> search_q == "" or String.contains?(String.downcase(l), String.downcase(search_q)) end) do %>
+                    <button type="button"
+                      phx-click="filter_pick" phx-value-field={field_name} phx-value-value={val}
+                      class={"adm-filter-option #{if val == active_val, do: "selected"}"}>
+                      <%= label %>
+                    </button>
                   <% end %>
                 </div>
               </div>
@@ -840,124 +972,135 @@ defmodule QcommerceWeb.Admin.ResourceLive do
           </div>
         <% end %>
 
-        <div class="adm-spacer"></div>
-
-        <%= if @selected_ids != [] do %>
-          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);padding:3px 10px;border-radius:20px;margin-right:8px;">
-            <span style="font-size:11.5px;color:#f87171;font-weight:600;white-space:nowrap;">
-              {length(@selected_ids)} selected
-            </span>
-            <form phx-submit="bulk_action" style="display:flex;align-items:center;gap:6px;margin:0;">
-              <select
-                name="action"
-                class="adm-select"
-                style="height:26px;font-size:11px;width:auto;min-width:130px;padding:2px 8px;border-radius:14px;border-color:rgba(239,68,68,.25);background:var(--adm-surface);color:var(--adm-text);outline:none;"
-              >
-                <option value="">— Action —</option>
-                <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
-                  <option value="delete">Delete selected</option>
-                <% end %>
-              </select>
-              <button
-                type="submit"
-                class="adm-btn adm-btn-danger"
-                style="height:26px;padding:0 12px;font-size:11px;border-radius:14px;border:none;"
-              >
-                Apply
-              </button>
-            </form>
-          </div>
+        <!-- Clear filters -->
+        <%= if map_size(@filters) > 0 do %>
+          <button phx-click="filter_clear_all" class="adm-btn adm-btn-ghost" style="font-size:11px;color:var(--adm-red);">
+            <QcommerceWeb.Layouts.sidebar_icon icon="x" class="w-3 h-3" /> Clear filters
+          </button>
         <% end %>
 
-        <span style="font-size:11px;color:var(--adm-text2);">Page {@page} / {@total_pages}</span>
+        <span class="adm-spacer"></span>
+
+        <!-- Bulk actions -->
+        <%= if length(@selected_ids) > 0 do %>
+          <span style="font-size:12px;color:var(--adm-text2);"><%= length(@selected_ids) %> selected</span>
+
+          <!-- Built-in delete -->
+          <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
+            <button phx-click="bulk_action" phx-value-action="delete"
+              class="adm-btn adm-btn-danger" style="font-size:11px;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="trash" class="w-4 h-4" /> Delete Selected
+            </button>
+          <% end %>
+
+          <!-- Custom actions -->
+          <%= for action <- (@config.custom_actions || []) do %>
+            <button phx-click="bulk_action" phx-value-action={action.id}
+              class="adm-btn adm-btn-ghost" style="font-size:11px;"
+              title={action.label}>
+              <QcommerceWeb.Layouts.sidebar_icon icon={action[:icon] || "hero-cog-6-tooth"} class="w-4 h-4" />
+              <%= action.label %>
+            </button>
+          <% end %>
+        <% else %>
+          <!-- Always show CSV export if configured -->
+          <%= for _action <- Enum.filter(@config.custom_actions || [], &(&1.id == "export_csv")) do %>
+            <button phx-click="bulk_action" phx-value-action="export_csv"
+              class="adm-btn adm-btn-ghost" style="font-size:11px;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-down-tray" class="w-4 h-4" />
+              Export
+            </button>
+          <% end %>
+        <% end %>
+
+        <span style="font-size:11px;color:var(--adm-text2);">
+          Page <%= @page %> / <%= @total_pages %>
+        </span>
       </div>
-      
-    <!-- Table -->
+
+      <!-- Table -->
       <div class="adm-table-wrap">
         <%= if @records == [] do %>
           <div class="adm-empty">
-            <div
-              class="adm-empty-icon"
-              style="display:flex;justify-content:center;margin-bottom:12px;color:var(--adm-text3);"
-            >
+            <div style="display:flex;justify-content:center;margin-bottom:12px;color:var(--adm-text3);">
               <QcommerceWeb.Layouts.sidebar_icon icon={@config.icon} class="w-12 h-12" />
             </div>
-            <div class="adm-empty-msg">No {@config.label |> String.downcase()} found</div>
-            <div class="adm-empty-sub">Try a different search or add a new record.</div>
+            <div class="adm-empty-msg">No <%= String.downcase(@config.label) %> found</div>
+            <div class="adm-empty-sub">
+              <%= if @search != "" or map_size(@filters) > 0 do %>
+                Try adjusting your search or filters.
+              <% else %>
+                Add a new record to get started.
+              <% end %>
+            </div>
           </div>
         <% else %>
           <table class="adm-table">
             <thead>
               <tr>
                 <th style="width:38px;padding:10px 8px;">
-                  <input
-                    type="checkbox"
-                    phx-click="toggle_select_all"
-                    style="cursor:pointer;accent-color:var(--adm-accent);"
-                  />
+                  <% all_ids = Enum.map(@records, &to_string(&1.id)) %>
+                  <% all_sel = Enum.all?(all_ids, &(&1 in @selected_ids)) %>
+                  <input type="checkbox" phx-click="toggle_select_all"
+                    checked={all_sel and length(all_ids) > 0}
+                    style="cursor:pointer;accent-color:var(--adm-accent);" />
                 </th>
                 <%= for field <- @list_fields do %>
-                  <th
-                    style="cursor:pointer;user-select:none;"
-                    phx-click="sort"
-                    phx-value-field={to_string(field.name)}
-                  >
-                    {field.label}
+                  <th style={"cursor:#{if FieldHelper.sortable?(field), do: "pointer", else: "default"};user-select:none;"}
+                    phx-click={if FieldHelper.sortable?(field), do: "sort", else: nil}
+                    phx-value-field={to_string(field.name)}>
+                    <%= field.label %>
                     <%= if @sort_by == to_string(field.name) do %>
-                      <span style="color:var(--adm-accent2);">
-                        {if @sort_dir == "asc", do: "↑", else: "↓"}
+                      <span style="color:var(--adm-accent2);margin-left:2px;">
+                        <%= if @sort_dir == "asc" do %>
+                          <QcommerceWeb.Layouts.sidebar_icon icon="arrow-up" class="w-3 h-3" />
+                        <% else %>
+                          <QcommerceWeb.Layouts.sidebar_icon icon="arrow-down" class="w-3 h-3" />
+                        <% end %>
                       </span>
                     <% end %>
                   </th>
                 <% end %>
-                <th style="text-align:right;">Actions</th>
+                <th style="text-align:right;width:140px;">Actions</th>
               </tr>
             </thead>
             <tbody>
               <%= for record <- @records do %>
                 <% is_sel = to_string(record.id) in @selected_ids %>
-                <tr style={if is_sel, do: "background:rgba(99,102,241,.07);", else: ""}>
+                <tr class={"adm-tr #{if is_sel, do: "selected"}"}>
                   <td style="padding:8px;width:38px;">
-                    <input
-                      type="checkbox"
-                      phx-click="toggle_select"
-                      phx-value-id={record.id}
-                      style="cursor:pointer;accent-color:var(--adm-accent);"
-                      checked={is_sel}
-                    />
+                    <input type="checkbox" phx-click="toggle_select" phx-value-id={record.id}
+                      checked={is_sel} style="cursor:pointer;accent-color:var(--adm-accent);" />
                   </td>
                   <%= for field <- @list_fields do %>
+                    <% is_link = field.name in (@config.list_display_links || [:id]) %>
                     <td class={if field.name == :id, do: "adm-id"}>
-                      {render_cell(field, Map.get(record, field.name))}
+                      <%= if is_link do %>
+                        <a href={"/admin/r/#{@resource_slug}/#{record.id}"}
+                          style="color:var(--adm-accent2);text-decoration:none;font-weight:500;">
+                          <%= render_cell(field, Map.get(record, field.name), @config) %>
+                        </a>
+                      <% else %>
+                        <%= render_cell(field, Map.get(record, field.name), @config) %>
+                      <% end %>
                     </td>
                   <% end %>
                   <td style="text-align:right;white-space:nowrap;">
-                    <a
-                      href={"/admin/r/#{@resource_slug}/#{record.id}"}
-                      class="adm-btn adm-btn-ghost"
-                      style="font-size:11px;height:28px;padding:0 10px;"
-                    >
-                      View
-                    </a>
-                    <%= if :edit in (@config.actions || [:show, :edit, :delete]) do %>
-                      <a
-                        href={"/admin/r/#{@resource_slug}/#{record.id}/edit"}
-                        class="adm-btn adm-btn-ghost"
-                        style="font-size:11px;height:28px;padding:0 10px;margin-left:4px;"
-                      >
-                        Edit
+                    <a href={"/admin/r/#{@resource_slug}/#{record.id}"}
+                      class="adm-action-btn" title="View">
+                        <QcommerceWeb.Layouts.sidebar_icon icon="eye" class="w-4 h-4" />
                       </a>
+                    <%= if :edit in (@config.actions || [:show, :edit, :delete]) do %>
+                      <a href={"/admin/r/#{@resource_slug}/#{record.id}/edit"}
+                        class="adm-action-btn adm-action-edit" title="Edit">
+                          <QcommerceWeb.Layouts.sidebar_icon icon="pencil" class="w-4 h-4" />
+                        </a>
                     <% end %>
                     <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
-                      <button
-                        phx-click="delete"
-                        phx-value-id={record.id}
-                        data-confirm={"Delete ##{record.id}?"}
-                        class="adm-btn adm-btn-danger"
-                        style="font-size:11px;height:28px;padding:0 10px;margin-left:4px;"
-                      >
-                        Del
-                      </button>
+                      <button phx-click="confirm_delete" phx-value-id={record.id}
+                        class="adm-action-btn adm-action-del" title="Delete">
+                          <QcommerceWeb.Layouts.sidebar_icon icon="trash" class="w-4 h-4" />
+                        </button>
                     <% end %>
                   </td>
                 </tr>
@@ -966,31 +1109,30 @@ defmodule QcommerceWeb.Admin.ResourceLive do
           </table>
         <% end %>
       </div>
-      
-    <!-- Pagination -->
+
+      <!-- Pagination -->
       <%= if @total_pages > 1 do %>
         <div class="adm-pagination">
-          <span style="margin-right:8px;color:var(--adm-text2);">
-            Showing {(@page - 1) * @per_page + 1}–{min(@page * @per_page, @total)} of {@total}
+          <span style="margin-right:8px;color:var(--adm-text2);font-size:12px;">
+            <%= (@page - 1) * @per_page + 1 %>–<%= min(@page * @per_page, @total) %> of <%= @total %>
           </span>
           <%= if @page > 1 do %>
-            <button phx-click="page" phx-value-p={@page - 1} class="adm-page-btn">‹</button>
+            <button phx-click="page" phx-value-p={@page - 1} class="adm-page-btn">
+              <QcommerceWeb.Layouts.sidebar_icon icon="chevron-left" class="w-4 h-4" />
+            </button>
           <% end %>
           <%= for p <- page_range(@page, @total_pages) do %>
             <%= if p == :ellipsis do %>
               <span style="color:var(--adm-text3);padding:0 4px;">…</span>
             <% else %>
-              <button
-                phx-click="page"
-                phx-value-p={p}
-                class={"adm-page-btn #{if p == @page, do: "current"}"}
-              >
-                {p}
-              </button>
+              <button phx-click="page" phx-value-p={p}
+                class={"adm-page-btn #{if p == @page, do: "current"}"}><%= p %></button>
             <% end %>
           <% end %>
           <%= if @page < @total_pages do %>
-            <button phx-click="page" phx-value-p={@page + 1} class="adm-page-btn">›</button>
+            <button phx-click="page" phx-value-p={@page + 1} class="adm-page-btn">
+              <QcommerceWeb.Layouts.sidebar_icon icon="chevron-right" class="w-4 h-4" />
+            </button>
           <% end %>
         </div>
       <% end %>
@@ -998,84 +1140,50 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     """
   end
 
-  defp render_cell(%{name: :is_active} = _field, true),
-    do: Phoenix.HTML.raw(~s(<span class="badge badge-green">Active</span>))
-
-  defp render_cell(%{name: :is_active} = _field, false),
-    do: Phoenix.HTML.raw(~s(<span class="badge badge-red">Inactive</span>))
-
-  defp render_cell(%{name: :is_available} = _field, true),
-    do: Phoenix.HTML.raw(~s(<span class="badge badge-green">Available</span>))
-
-  defp render_cell(%{name: :is_available} = _field, false),
-    do: Phoenix.HTML.raw(~s(<span class="badge badge-red">Unavailable</span>))
-
-  defp render_cell(%{name: :status} = _field, val) when not is_nil(val) do
-    cls = status_badge_class(val)
-    Phoenix.HTML.raw(~s(<span class="badge #{cls}">#{val}</span>))
-  end
-
-  defp render_cell(%{name: :role} = _field, val) when not is_nil(val) do
-    Phoenix.HTML.raw(~s(<span class="badge badge-blue">#{val}</span>))
-  end
-
-  defp render_cell(_field, val), do: FieldHelper.format_value(val)
-
-  defp status_badge_class(:pending), do: "badge-yellow"
-  defp status_badge_class(:delivered), do: "badge-green"
-  defp status_badge_class(:cancelled), do: "badge-red"
-  defp status_badge_class(:rejected), do: "badge-red"
-  defp status_badge_class(:out_for_delivery), do: "badge-blue"
-  defp status_badge_class(_), do: "badge-gray"
-
-  defp page_range(_current, total) when total <= 7, do: 1..total |> Enum.to_list()
-
-  defp page_range(current, total) do
-    left = max(1, current - 2)
-    right = min(total, current + 2)
-    pages = Enum.to_list(left..right)
-
-    left_gap = if left > 2, do: [:ellipsis], else: []
-    right_gap = if right < total - 1, do: [:ellipsis], else: []
-    left_end = if left > 1, do: [1], else: []
-    right_end = if right < total, do: [total], else: []
-
-    left_end ++ left_gap ++ pages ++ right_gap ++ right_end
-  end
-
-  # ── Show / Detail view ─────────────────────────────────────────────────────
+  # ===========================================================================
+  # SHOW VIEW
+  # ===========================================================================
 
   defp render_show(assigns) do
     ~H"""
-    <div
-      class="adm-page-header"
-      style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;"
-    >
+    <!-- Delete modal -->
+    <%= if @delete_confirm_id do %>
+      <div style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;">
+        <div style="background:var(--adm-card);border:1px solid var(--adm-border);border-radius:16px;padding:32px;width:400px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin-bottom:8px;color:var(--adm-red);">
+            <QcommerceWeb.Layouts.sidebar_icon icon="warning" class="w-5 h-5" />
+            Confirm Delete
+          </div>
+          <p style="color:var(--adm-text2);font-size:13px;margin-bottom:20px;">
+            Delete record <strong>#<%= @delete_confirm_id %></strong>? This cannot be undone.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button phx-click="cancel_delete" class="adm-btn adm-btn-ghost">Cancel</button>
+            <button phx-click="delete" phx-value-id={@delete_confirm_id} class="adm-btn adm-btn-danger">Delete</button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <div>
         <h1 class="adm-page-title" style="display:inline-flex;align-items:center;gap:8px;">
           <QcommerceWeb.Layouts.sidebar_icon icon={@config.icon} class="w-6 h-6" />
-          {@config.label} #{@record && @record.id}
+          <%= @config.label_singular %> #<%= @record && @record.id %>
         </h1>
-        <p class="adm-page-sub">Viewing record details</p>
+        <p class="adm-page-sub">Viewing record details · <span style="font-family:monospace;font-size:11px;"><%= inspect(@config.schema) %></span></p>
       </div>
-      <div style="display:flex;gap:8px;">
-        <a href={"/admin/r/#{@resource_slug}"} class="adm-btn adm-btn-ghost">← Back</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href={"/admin/r/#{@resource_slug}"} class="adm-btn adm-btn-ghost">← Back to <%= @config.label %></a>
         <%= if :edit in (@config.actions || [:show, :edit, :delete]) do %>
-          <a
-            href={"/admin/r/#{@resource_slug}/#{@record && @record.id}/edit"}
-            class="adm-btn adm-btn-primary"
-          >
-            Edit
+          <a href={"/admin/r/#{@resource_slug}/#{@record && @record.id}/edit"} class="adm-btn adm-btn-primary">
+            <QcommerceWeb.Layouts.sidebar_icon icon="pencil" class="w-4 h-4" /> Edit
           </a>
         <% end %>
         <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
-          <button
-            phx-click="delete"
-            phx-value-id={@record && @record.id}
-            data-confirm="Delete this record?"
-            class="adm-btn adm-btn-danger"
-          >
-            Delete
+          <button phx-click="confirm_delete" phx-value-id={@record && @record.id}
+            class="adm-btn adm-btn-danger">
+            <QcommerceWeb.Layouts.sidebar_icon icon="trash" class="w-4 h-4" /> Delete
           </button>
         <% end %>
       </div>
@@ -1085,191 +1193,303 @@ defmodule QcommerceWeb.Admin.ResourceLive do
       <div class="adm-card">
         <div class="adm-card-header">
           <span class="adm-card-title">Field Values</span>
-          <span style="font-size:11px;color:var(--adm-text2);font-family:monospace;">
-            {inspect(@config.schema)}
-          </span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:10px;color:var(--adm-text3);font-family:monospace;">id: <%= @record.id %></span>
+          </div>
         </div>
         <div class="adm-card-body">
           <div class="adm-form-grid">
             <%= for field <- @all_fields do %>
-              <div class={"adm-field #{if field.input_type == :textarea, do: "full"}"}>
-                <div class="adm-label">{field.label}</div>
+              <div class={"adm-field #{if field.input_type in [:textarea, :autocomplete], do: "full"}"}>
+                <div class="adm-label"><%= field.label %></div>
                 <div class="adm-readonly-val">
-                  {FieldHelper.format_value(Map.get(@record, field.name))}
+                  <%= render_cell(field, Map.get(@record, field.name), @config) %>
                 </div>
               </div>
             <% end %>
           </div>
         </div>
       </div>
+
+      <!-- History/audit hint -->
+      <div style="margin-top:16px;padding:12px 16px;background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:8px;font-size:11.5px;color:var(--adm-text2);">
+        <span style="display:inline-flex;align-items:center;gap:4px;color:var(--adm-accent2);font-weight:600;">
+          <QcommerceWeb.Layouts.sidebar_icon icon="info" class="w-4 h-4" /> History:
+        </span>
+        Created: <strong><%= FieldHelper.format_value(Map.get(@record, :inserted_at)) %></strong>
+        <%= if Map.has_key?(@record, :updated_at) do %>
+          · Updated: <strong><%= FieldHelper.format_value(Map.get(@record, :updated_at)) %></strong>
+        <% end %>
+      </div>
     <% else %>
-      <div class="adm-card">
-        <div class="adm-empty">
-          <div class="adm-empty-icon">🔍</div>
-          <div class="adm-empty-msg">Record not found</div>
-        </div>
+      <div class="adm-card adm-empty">
+        <div class="adm-empty-icon"><QcommerceWeb.Layouts.sidebar_icon icon="search" class="w-10 h-10" /></div>
+        <div class="adm-empty-msg">Record not found</div>
       </div>
     <% end %>
     """
   end
 
-  # ── New / Edit form ─────────────────────────────────────────────────────────
+  # ===========================================================================
+  # NEW / EDIT FORM
+  # ===========================================================================
 
   defp render_form(assigns, mode) do
     assigns = Phoenix.Component.assign(assigns, :form_mode, mode)
 
     ~H"""
-    <div
-      class="adm-page-header"
-      style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;"
-    >
+    <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <div>
         <h1 class="adm-page-title" style="display:inline-flex;align-items:center;gap:8px;">
           <%= if @form_mode == :new do %>
             <QcommerceWeb.Layouts.sidebar_icon icon="hero-plus-circle" class="w-6 h-6" />
-            New {@config.label |> String.replace(~r/s$/, "")}
+            New <%= @config.label_singular %>
           <% else %>
             <QcommerceWeb.Layouts.sidebar_icon icon="hero-pencil-square" class="w-6 h-6" />
-            Edit {@config.label} #{@record && @record.id}
+            Edit <%= @config.label_singular %> #<%= @record && @record.id %>
           <% end %>
         </h1>
-        <p class="adm-page-sub">{@config.label} · {inspect(@config.schema)}</p>
+        <p class="adm-page-sub"><%= @config.label %> · <span style="font-family:monospace;font-size:11px;"><%= inspect(@config.schema) %></span></p>
       </div>
       <a href={"/admin/r/#{@resource_slug}"} class="adm-btn adm-btn-ghost">← Cancel</a>
     </div>
 
-    <div class="adm-card">
-      <div class="adm-card-header">
-        <span class="adm-card-title">
-          {if @form_mode == :new, do: "Create Record", else: "Update Record"}
-        </span>
-        <span style="font-size:11px;color:var(--adm-text2);">
-          * required fields
-        </span>
-      </div>
-      <div class="adm-card-body">
-        <form phx-submit="save" id="adm-form">
-          <div class="adm-form-grid">
-            <%= for field <- @form_fields do %>
-              <% full_class = if field.input_type in [:textarea, :autocomplete], do: "full", else: "" %>
-              <div class={"adm-field #{full_class}"}>
-                <label class="adm-label" for={"field_#{field.name}"}>
-                  {field.label}
-                  <%= if field.required do %>
-                    <span class="req">*</span>
-                  <% end %>
-                </label>
+    <form phx-submit="save" id="adm-form">
+      <!-- Save on top -->
+      <%= if @config.save_on_top do %>
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <button type="submit" class="adm-btn adm-btn-primary">
+            <%= if @form_mode == :new, do: "Create #{@config.label_singular}", else: "Save Changes" %>
+          </button>
+          <a href={"/admin/r/#{@resource_slug}"} class="adm-btn adm-btn-ghost">Cancel</a>
+        </div>
+      <% end %>
 
-                <%= if field.input_type == :autocomplete do %>
-                  
-                  <% fkey = to_string(field.name) %>
-                  <% is_open = Map.get(@autocomplete_open, fkey, false) %>
-                  <% sel_rec = Map.get(@autocomplete_selected, fkey) %>
-                  <% results = Map.get(@autocomplete_results, fkey, []) %>
-                  <% search_q = Map.get(@autocomplete_search, fkey, "") %>
-                  <% current_id = if sel_rec, do: to_string(sel_rec.id), else: "" %>
+      <!-- Fieldsets -->
+      <%= for {title, classes, fields} <- @fieldsets do %>
+        <% is_collapsible = "collapse" in classes %>
+        <% is_collapsed   = title in (@collapsed_fieldsets || []) %>
 
-                  <input type="hidden" name={"record[#{fkey}]"} value={current_id} />
-                  <div style="position:relative;">
-                    <div
-                      class="adm-input"
-                      style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;"
-                      phx-click="autocomplete_toggle"
-                      phx-value-field={fkey}
-                    >
-                      <span style={"#{if sel_rec, do: "color:var(--adm-text);", else: "color:var(--adm-text3);"}"}>
-                        {if sel_rec,
-                          do:
-                            "#{Qcommerce.Admin.FieldHelper.humanize(field.assoc.assoc_name)} ##{sel_rec.id}",
-                          else: "— choose #{field.label} —"}
+        <div class="adm-card" style="margin-bottom:16px;">
+          <%= if title != "" do %>
+            <div class="adm-card-header" style={"#{if is_collapsible, do: "cursor:pointer;"}"}
+              phx-click={if is_collapsible, do: "toggle_fieldset", else: nil}
+              phx-value-title={title}>
+              <span class="adm-card-title"><%= title %></span>
+              <%= if is_collapsible do %>
+                <span style="display:inline-flex;align-items:center;gap:3px;color:var(--adm-text3);font-size:11px;">
+                <%= if is_collapsed do %>
+                  <QcommerceWeb.Layouts.sidebar_icon icon="chevron-right" class="w-3 h-3" /> Show
+                <% else %>
+                  <QcommerceWeb.Layouts.sidebar_icon icon="chevron-down" class="w-3 h-3" /> Hide
+                <% end %>
+              </span>
+              <% end %>
+            </div>
+          <% end %>
+
+          <%= unless is_collapsed do %>
+            <div class="adm-card-body">
+              <div class="adm-form-grid">
+                <%= for field <- fields do %>
+                  <% full_class = if field.input_type in [:textarea, :autocomplete], do: "full", else: "" %>
+                  <div class={"adm-field #{full_class}"}>
+                    <label class="adm-label" for={"field_#{field.name}"}>
+                      <%= field.label %>
+                      <%= if field.required do %><span class="req">*</span><% end %>
+                    </label>
+
+                    <%= if field.input_type == :autocomplete do %>
+                      <%= render_autocomplete(field, @record, @autocomplete_open, @autocomplete_selected, @autocomplete_results, @autocomplete_search) %>
+                    <% else %>
+                      <%= render_input(field, @record, @config, @changeset_errors) %>
+                    <% end %>
+
+                    <%= if Map.has_key?(@changeset_errors, field.name) do %>
+                      <div class="adm-val-error">
+                        <span style="display:inline-flex;align-items:center;gap:3px;">
+                        <QcommerceWeb.Layouts.sidebar_icon icon="warning" class="w-3 h-3" />
+                        <%= Enum.join(Map.get(@changeset_errors, field.name, []), ", ") %>
                       </span>
-                      <span style="color:var(--adm-text3);font-size:11px;">
-                        {if is_open, do: "▴", else: "▾"}
-                      </span>
-                    </div>
-
-                    <%= if is_open do %>
-                      <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:100;background:var(--adm-card);border:1px solid var(--adm-border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;">
-                        <div style="padding:8px;">
-                          <input
-                            type="text"
-                            value={search_q}
-                            placeholder="Search…"
-                            style="width:100%;background:var(--adm-surface);border:1px solid var(--adm-border);border-radius:6px;color:var(--adm-text);padding:6px 10px;font-size:12px;outline:none;"
-                            phx-keyup="autocomplete_search"
-                            phx-value-field={fkey}
-                            phx-debounce="200"
-                          />
-                        </div>
-                        <div style="max-height:220px;overflow-y:auto;">
-                          <%= if sel_rec do %>
-                            <div style="padding:6px 12px;font-size:11px;color:var(--adm-accent2);border-bottom:1px solid var(--adm-border);display:flex;justify-content:space-between;align-items:center;">
-                              <span>Selected: #{sel_rec.id}</span>
-                              <button
-                                type="button"
-                                phx-click="autocomplete_clear"
-                                phx-value-field={fkey}
-                                style="background:none;border:none;color:var(--adm-text3);cursor:pointer;font-size:12px;"
-                              >
-                                ✕ Clear
-                              </button>
-                            </div>
-                          <% end %>
-                          <%= if results == [] do %>
-                            <div style="padding:12px;text-align:center;color:var(--adm-text3);font-size:12px;">
-                              No results
-                            </div>
-                          <% else %>
-                            <%= for rec <- results do %>
-                              <div
-                                class="adm-autocomplete-option"
-                                phx-click="autocomplete_select"
-                                phx-value-field={fkey}
-                                phx-value-id={to_string(rec.id)}
-                                style={"cursor:pointer;padding:8px 12px;font-size:13px;color:#{if sel_rec && sel_rec.id == rec.id, do: "var(--adm-accent2)", else: "var(--adm-text2)"};background:#{if sel_rec && sel_rec.id == rec.id, do: "rgba(99,102,241,.1)", else: "transparent"};"}
-                              >
-                                <span style="font-weight:600;color:var(--adm-text3);font-family:monospace;font-size:11px;margin-right:6px;">
-                                  #{rec.id}
-                                </span>
-                                {Qcommerce.Admin.FieldHelper.format_value(
-                                  Map.get(rec, :name) || Map.get(rec, :full_name) ||
-                                    Map.get(rec, :code) || Map.get(rec, :email) || "Record #{rec.id}"
-                                )}
-                              </div>
-                            <% end %>
-                          <% end %>
-                        </div>
                       </div>
                     <% end %>
                   </div>
-                <% else %>
-                  {render_input(field, @record, @config, @changeset_errors)}
-                <% end %>
-
-                <%= if Map.has_key?(@changeset_errors, field.name) do %>
-                  <div class="adm-val-error">
-                    {Enum.join(Map.get(@changeset_errors, field.name, []), ", ")}
-                  </div>
                 <% end %>
               </div>
-            <% end %>
-          </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
 
-          <div style="display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--adm-border);">
-            <button type="submit" class="adm-btn adm-btn-primary">
-              {if @form_mode == :new, do: "Create", else: "Save Changes"}
-            </button>
-            <a href={"/admin/r/#{@resource_slug}"} class="adm-btn adm-btn-ghost">Cancel</a>
+      <!-- Inline Formsets -->
+      <%= for %{inline: inline, records: inline_records, fields: inline_fields} <- @inlines do %>
+        <div class="adm-card" style="margin-bottom:16px;">
+          <div class="adm-card-header">
+            <span class="adm-card-title">
+              <span style="display:inline-flex;align-items:center;gap:6px;">
+                <QcommerceWeb.Layouts.sidebar_icon icon="link" class="w-4 h-4" />
+                <%= inline[:label] || "Related #{inspect(inline.schema)}" %>
+              </span>
+            </span>
+            <span style="font-size:11px;color:var(--adm-text2);">
+              <%= length(inline_records) %> existing · <%= inline[:extra] || 1 %> new
+            </span>
           </div>
-        </form>
+          <div class="adm-card-body" style="padding:0;">
+            <div class="adm-table-wrap">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <%= for f <- inline_fields do %>
+                      <th><%= f.label %></th>
+                    <% end %>
+                    <th style="width:60px;text-align:center;">Del</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Existing rows -->
+                  <%= for {rec, idx} <- Enum.with_index(inline_records) do %>
+                    <tr>
+                      <input type="hidden" name={"record[inlines][#{idx}][id]"} value={rec.id} />
+                      <input type="hidden" name={"record[inlines][#{idx}][__inline_schema]"} value={inspect(inline.schema)} />
+                      <input type="hidden" name={"record[inlines][#{idx}][#{inline.fk_field}]"} value={@record && @record.id} />
+                      <%= for f <- inline_fields do %>
+                        <td>
+                          <%= render_inline_input(f, Map.get(rec, f.name), idx) %>
+                        </td>
+                      <% end %>
+                      <td style="text-align:center;">
+                        <label style="cursor:pointer;color:var(--adm-red);">
+                          <input type="checkbox" name={"record[inlines][#{idx}][_delete]"} value="true"
+                            style="accent-color:var(--adm-red);" />
+                        </label>
+                      </td>
+                    </tr>
+                  <% end %>
+                  <!-- New blank rows -->
+                  <%= for new_idx <- 0..((inline[:extra] || 1) - 1) do %>
+                    <% idx = length(inline_records) + new_idx %>
+                    <tr class="adm-inline-new">
+                      <input type="hidden" name={"record[inlines][#{idx}][__inline_schema]"} value={inspect(inline.schema)} />
+                      <input type="hidden" name={"record[inlines][#{idx}][#{inline.fk_field}]"} value={@record && @record.id} />
+                      <%= for f <- inline_fields do %>
+                        <td>
+                          <%= render_inline_input(f, nil, idx) %>
+                        </td>
+                      <% end %>
+                      <td></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Save buttons -->
+      <div style="display:flex;gap:10px;margin-top:4px;padding-top:8px;">
+        <button type="submit" class="adm-btn adm-btn-primary">
+          <%= if @form_mode == :new, do: "Create #{@config.label_singular}", else: "Save Changes" %>
+        </button>
+        <a href={"/admin/r/#{@resource_slug}"} class="adm-btn adm-btn-ghost">Cancel</a>
+        <%= if @form_mode == :edit and :delete in (@config.actions || [:show, :edit, :delete]) do %>
+          <button type="button" phx-click="confirm_delete" phx-value-id={@record && @record.id}
+            class="adm-btn adm-btn-danger" style="margin-left:auto;">
+            <QcommerceWeb.Layouts.sidebar_icon icon="trash" class="w-4 h-4" /> Delete this <%= @config.label_singular %>
+          </button>
+        <% end %>
       </div>
-    </div>
+    </form>
+
+    <!-- Prepopulated fields JS -->
+    <%= Phoenix.HTML.raw(FieldHelper.prepopulate_js(Map.get(@config, :prepopulated_fields, []))) %>
     """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Input renderers
+  # ---------------------------------------------------------------------------
+
+  defp render_autocomplete(field, _record, autocomplete_open, autocomplete_selected, autocomplete_results, autocomplete_search) do
+    fkey      = to_string(field.name)
+    is_open   = Map.get(autocomplete_open,   fkey, false)
+    sel_rec   = Map.get(autocomplete_selected, fkey)
+    results   = Map.get(autocomplete_results, fkey, [])
+    search_q  = Map.get(autocomplete_search, fkey, "")
+    current_id = if sel_rec, do: to_string(sel_rec.id), else: ""
+
+    placeholder = "— choose #{field.label} —"
+    sel_label   = if sel_rec do
+      "#{FieldHelper.humanize(to_string(field.assoc.assoc_name))} ##{sel_rec.id} · #{FieldHelper.assoc_label(sel_rec)}"
+    else
+      nil
+    end
+
+    _assigns = %{
+      field: field, fkey: fkey, is_open: is_open, sel_rec: sel_rec,
+      results: results, search_q: search_q, current_id: current_id,
+      placeholder: placeholder, sel_label: sel_label
+    }
+
+    Phoenix.HTML.raw("""
+    <div style="position:relative;">
+      <input type="hidden" name="record[#{fkey}]" value="#{current_id}" />
+      <div class="adm-input adm-ac-trigger"
+        phx-click="autocomplete_toggle" phx-value-field="#{fkey}"
+        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;min-height:38px;">
+        <span style="#{if sel_rec, do: "color:var(--adm-text);", else: "color:var(--adm-text3);"}font-size:13px;">
+          #{if sel_label, do: sel_label, else: placeholder}
+        </span>
+        <span style="color:var(--adm-text3);font-size:11px;flex-shrink:0;">#{if is_open, do: "▴", else: "▾"}</span>
+      </div>
+
+      #{if is_open do
+        """
+        <div class="adm-ac-dropdown">
+          <div style="padding:8px;">
+            <input type="text" value="#{search_q}" placeholder="Search…"
+              class="adm-filter-search"
+              phx-keyup="autocomplete_search" phx-value-field="#{fkey}" phx-debounce="200" />
+          </div>
+          #{if sel_rec do
+            """
+            <div style="padding:6px 12px;font-size:11px;color:var(--adm-accent2);border-bottom:1px solid var(--adm-border);display:flex;justify-content:space-between;">
+              <span>✓ Selected: ##{sel_rec.id}</span>
+              <button type="button" phx-click="autocomplete_clear" phx-value-field="#{fkey}"
+                style="background:none;border:none;color:var(--adm-text3);cursor:pointer;">✕ Clear</button>
+            </div>
+            """
+          else "" end}
+          <div style="max-height:220px;overflow-y:auto;">
+            #{if results == [] do
+              ~s(<div style="padding:16px;text-align:center;color:var(--adm-text3;font-size:12px;">No results</div>)
+            else
+              Enum.map(results, fn rec ->
+                is_sel  = sel_rec && sel_rec.id == rec.id
+                lbl     = FieldHelper.assoc_label(rec)
+                bg      = if is_sel, do: "rgba(99,102,241,.1)", else: "transparent"
+                color   = if is_sel, do: "var(--adm-accent2)", else: "var(--adm-text2)"
+                """
+                <div class="adm-filter-option"
+                  phx-click="autocomplete_select" phx-value-field="#{fkey}" phx-value-id="#{rec.id}"
+                  style="cursor:pointer;color:#{color};background:#{bg};">
+                  <span style="font-family:monospace;font-size:10px;color:var(--adm-text3);margin-right:6px;">##{rec.id}</span>
+                  #{lbl}
+                </div>
+                """
+              end) |> Enum.join("")
+            end}
+          </div>
+        </div>
+        """
+      else "" end}
+    </div>
+    """)
   end
 
   defp render_input(%{input_type: :checkbox} = field, record, _config, _errors) do
     val = Map.get(record || %{}, field.name, false)
-
     Phoenix.HTML.raw("""
     <label class="adm-checkbox">
       <input type="checkbox" name="record[#{field.name}]" id="field_#{field.name}"
@@ -1281,69 +1501,134 @@ defmodule QcommerceWeb.Admin.ResourceLive do
   end
 
   defp render_input(%{input_type: :select} = field, record, config, _errors) do
-    val = Map.get(record || %{}, field.name)
+    val  = Map.get(record || %{}, field.name)
     opts = FieldHelper.enum_values(config.schema, field.name)
-
     options_html =
       Enum.map(opts, fn opt ->
         lbl = opt |> to_string() |> String.replace("_", " ") |> String.capitalize()
-        sel = if to_string(opt) == to_string(val), do: "selected", else: ""
+        sel = if to_string(opt) == to_string(val || ""), do: "selected", else: ""
         "<option value=\"#{opt}\" #{sel}>#{lbl}</option>"
       end)
       |> Enum.join("")
 
     Phoenix.HTML.raw("""
-    <div style="position:relative;">
-      <select name="record[#{field.name}]" id="field_#{field.name}" class="adm-select adm-select2">
-        <option value="">— choose —</option>
-        #{options_html}
-      </select>
-    </div>
-    """)
-  end
-
-  defp render_input(%{input_type: :autocomplete} = field, record, _config, _errors) do
-    # renders a JS-free LiveView-driven autocomplete (Select2 style)
-    # Actual result list and open state come from socket assigns
-    fkey = to_string(field.name)
-    val = Map.get(record || %{}, field.name)
-    val_str = to_string_safe(val)
-
-    Phoenix.HTML.raw("""
-    <div class="adm-ac" data-field="#{fkey}">
-      <input type="hidden" name="record[#{fkey}]" value="#{val_str}">
-      <div class="adm-ac-trigger" phx-click="autocomplete_toggle" phx-value-field="#{fkey}">
-        <span class="adm-ac-value" id="adm-ac-label-#{fkey}">Loading…</span>
-        <span style="color:var(--adm-text3);font-size:12px;">▾</span>
-      </div>
-    </div>
+    <select name="record[#{field.name}]" id="field_#{field.name}" class="adm-select">
+      <option value="">— choose —</option>
+      #{options_html}
+    </select>
     """)
   end
 
   defp render_input(%{input_type: :textarea} = field, record, _config, _errors) do
-    val = Map.get(record || %{}, field.name, "") || ""
-
-    escaped =
-      val |> to_string_safe() |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
-
+    val     = Map.get(record || %{}, field.name, "") || ""
+    escaped = val |> to_string_safe() |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
     Phoenix.HTML.raw("""
     <textarea name="record[#{field.name}]" id="field_#{field.name}" class="adm-textarea">#{escaped}</textarea>
     """)
   end
 
-  defp render_input(field, record, _config, _errors) do
-    val = Map.get(record || %{}, field.name, "") |> to_string_safe()
+  defp render_input(field, record, _config, errors) do
+    val     = Map.get(record || %{}, field.name, "") |> to_string_safe()
     escaped = val |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+    has_err = Map.has_key?(errors, field.name)
+    border  = if has_err, do: "border-color:var(--adm-red);", else: ""
 
     Phoenix.HTML.raw("""
     <input type="#{field.input_type}" name="record[#{field.name}]" id="field_#{field.name}"
-           value="#{escaped}" class="adm-input">
+           value="#{escaped}" class="adm-input" style="#{border}">
     """)
   end
 
-  defp to_string_safe(nil), do: ""
-  defp to_string_safe(%Decimal{} = d), do: Decimal.to_string(d)
-  defp to_string_safe(%DateTime{} = dt), do: DateTime.to_iso8601(dt) |> String.slice(0, 16)
+  defp render_inline_input(field, value, idx) do
+    val     = to_string_safe(value)
+    escaped = val |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
+    case field.input_type do
+      :checkbox ->
+        Phoenix.HTML.raw("""
+        <label class="adm-checkbox">
+          <input type="checkbox" name="record[inlines][#{idx}][#{field.name}]"
+                 value="true" #{if value, do: "checked"}>
+        </label>
+        <input type="hidden" name="record[inlines][#{idx}][#{field.name}]" value="false">
+        """)
+
+      :select ->
+        Phoenix.HTML.raw("""
+        <select name="record[inlines][#{idx}][#{field.name}]" class="adm-select" style="min-width:100px;">
+          <option value="">—</option>
+        </select>
+        """)
+
+      _ ->
+        Phoenix.HTML.raw("""
+        <input type="#{field.input_type}" name="record[inlines][#{idx}][#{field.name}]"
+               value="#{escaped}" class="adm-input" style="min-width:80px;">
+        """)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Cell renderer for list view
+  # ---------------------------------------------------------------------------
+
+  defp render_cell(%{name: :is_active} = _field, true, _config) do
+    Phoenix.HTML.raw(~s(<span class="badge badge-green">Active</span>))
+  end
+  defp render_cell(%{name: :is_active}, false, _config) do
+    Phoenix.HTML.raw(~s(<span class="badge badge-red">Inactive</span>))
+  end
+  defp render_cell(%{name: :is_available}, true, _config) do
+    Phoenix.HTML.raw(~s(<span class="badge badge-green">Available</span>))
+  end
+  defp render_cell(%{name: :is_available}, false, _config) do
+    Phoenix.HTML.raw(~s(<span class="badge badge-red">Unavailable</span>))
+  end
+  defp render_cell(%{name: :status} = _field, val, _config) when not is_nil(val) do
+    cls = FieldHelper.badge_for(:status, val)
+    Phoenix.HTML.raw(~s(<span class="badge #{cls}">#{val}</span>))
+  end
+  defp render_cell(%{name: :role}, val, _config) when not is_nil(val) do
+    Phoenix.HTML.raw(~s(<span class="badge badge-purple">#{val}</span>))
+  end
+  defp render_cell(_field, val, config) do
+    formatted = FieldHelper.format_value(val, config)
+    case formatted do
+      {:safe, html} -> Phoenix.HTML.raw(html)
+      str           -> str
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Pagination helper
+  # ---------------------------------------------------------------------------
+
+  defp page_range(_current, total) when total <= 7, do: 1..total |> Enum.to_list()
+  defp page_range(current, total) do
+    left  = max(1, current - 2)
+    right = min(total, current + 2)
+    pages = Enum.to_list(left..right)
+
+    left_gap  = if left  > 2,         do: [:ellipsis], else: []
+    right_gap = if right < total - 1, do: [:ellipsis], else: []
+    left_end  = if left  > 1,         do: [1],         else: []
+    right_end = if right < total,     do: [total],      else: []
+
+    left_end ++ left_gap ++ pages ++ right_gap ++ right_end
+  end
+
+  defp month_name(m) do
+    ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+    |> Enum.at((m || 1) - 1, "?")
+  end
+
+  # ---------------------------------------------------------------------------
+  # Misc helpers
+  # ---------------------------------------------------------------------------
+
+  defp to_string_safe(nil),               do: ""
+  defp to_string_safe(%Decimal{} = d),    do: Decimal.to_string(d)
+  defp to_string_safe(%DateTime{} = dt),  do: DateTime.to_iso8601(dt) |> String.slice(0, 16)
   defp to_string_safe(v) when is_atom(v), do: Atom.to_string(v)
-  defp to_string_safe(v), do: to_string(v)
+  defp to_string_safe(v),                 do: to_string(v)
 end
