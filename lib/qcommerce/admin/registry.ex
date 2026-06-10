@@ -1,21 +1,77 @@
 # lib/qcommerce/admin/registry.ex
 defmodule Qcommerce.Admin.Registry do
   @moduledoc """
-  Django-style admin model registry with role-based access control.
+  Django-style admin model registry.
 
-  To register a model:
+  Supports all major Django ModelAdmin options:
 
-      use Qcommerce.Admin.Registry,
-        schema: Qcommerce.Catalog.Product,
-        context: Qcommerce.Catalog,
-        label: "Products",
-        group: "Catalog",
-        icon: "hero-package",
-        roles: [:super_admin, :manager],   # who can access — defaults to [:super_admin]
-        list_fields: [:id, :name, :sku, :base_price, :is_active, :inserted_at],
-        search_fields: [:name, :sku],
-        readonly_fields: [:id, :inserted_at, :updated_at],
-        filters: [is_active: :boolean]
+    use Qcommerce.Admin.Registry,
+      schema:               Qcommerce.Catalog.Product,
+      context:              Qcommerce.Catalog,
+      label:                "Products",
+      label_singular:       "Product",         # auto-derived if omitted
+      group:                "Catalog",
+      icon:                 "hero-package",
+      roles:                [:super_admin, :manager],
+
+      # List view
+      list_fields:          [:id, :name, :sku, :base_price, :is_active, :inserted_at],
+      list_display_links:   [:id, :name],       # clickable columns → show page
+      list_select_related:  [:category],        # preload associations in list
+      list_per_page:        25,
+      show_full_result_count: true,
+
+      # Search
+      search_fields:        [:name, :sku, :description],
+
+      # Filters (sidebar list_filter equivalent)
+      filters:              [is_active: :boolean, status: :enum],
+
+      # Default ordering
+      ordering:             [:inserted_at],     # prefix "-" for desc: ["-inserted_at"]
+
+      # Form
+      readonly_fields:      [:id, :inserted_at, :updated_at],
+      fieldsets: [
+        {"Basic Info",    %{fields: [:name, :sku, :description]}},
+        {"Pricing",       %{fields: [:base_price, :unit, :tax_rate], classes: ["collapse"]}},
+        {"Meta",          %{fields: [:is_active, :inserted_at, :updated_at]}}
+      ],
+      prepopulated_fields:  [slug: :name],       # auto-fill slug from name (JS)
+      date_hierarchy:       :inserted_at,        # drill-down by date
+
+      # Display
+      empty_value_display:  "—",
+      save_on_top:          false,               # show save buttons at top too
+
+      # Custom actions beyond default [:show, :edit, :delete]
+      actions:              [:show, :edit, :delete],
+      custom_actions: [
+        %{id: "mark_active",   label: "Mark Active",   icon: "hero-check-circle", confirm: false},
+        %{id: "mark_inactive", label: "Mark Inactive",  icon: "hero-x-circle",    confirm: false},
+        %{id: "export_csv",    label: "Export CSV",     icon: "hero-arrow-down-tray", confirm: false}
+      ],
+
+      # Inline formsets (related models shown inline on edit page)
+      inlines: [
+        %{
+          schema:         Qcommerce.Catalog.ProductVariant,
+          context:        Qcommerce.Catalog,
+          fk_field:       :product_id,
+          label:          "Variants",
+          fields:         [:sku, :price, :stock],
+          extra:          1,        # blank rows to append
+          max_num:        20,
+          can_delete:     true
+        }
+      ],
+
+      # Context function overrides (default: list/1, get!/2, create/2, update/3, delete/2)
+      list_fn:   :list_products,
+      get_fn:    :get_product!,
+      create_fn: :create_product,
+      update_fn: :update_product,
+      delete_fn: :delete_product
   """
 
   @admin_modules [
@@ -29,8 +85,14 @@ defmodule Qcommerce.Admin.Registry do
     Qcommerce.Admin.OrderAdmin,
     Qcommerce.Admin.OrderItemAdmin,
     Qcommerce.Admin.RiderAdmin,
-    Qcommerce.Admin.BranchInventoryAdmin
+    Qcommerce.Admin.BranchInventoryAdmin,
+    Qcommerce.Admin.AccountAdmin,
+    Qcommerce.Admin.JournalAdmin
   ]
+
+  # ---------------------------------------------------------------------------
+  # Public API
+  # ---------------------------------------------------------------------------
 
   @doc "Return all registered admin configs, sorted by group then label."
   def all do
@@ -43,6 +105,7 @@ defmodule Qcommerce.Admin.Registry do
 
   @doc "Return configs visible to a specific user (filtered by role)."
   def all_for(nil), do: []
+
   def all_for(%{role: role}) do
     all()
     |> Enum.filter(fn config ->
@@ -53,16 +116,14 @@ defmodule Qcommerce.Admin.Registry do
 
   @doc "Return config for a specific schema module (as string slug or atom)."
   def get(schema_slug) when is_binary(schema_slug) do
-    all()
-    |> Enum.find(&(schema_to_slug(&1.schema) == schema_slug))
+    all() |> Enum.find(&(schema_to_slug(&1.schema) == schema_slug))
   end
 
   def get(schema_mod) when is_atom(schema_mod) do
-    all()
-    |> Enum.find(&(&1.schema == schema_mod))
+    all() |> Enum.find(&(&1.schema == schema_mod))
   end
 
-  @doc "Grouped registry entries for the sidebar nav (all roles)."
+  @doc "Grouped registry entries for the sidebar nav."
   def grouped do
     all()
     |> Enum.group_by(& &1.group)
@@ -71,13 +132,14 @@ defmodule Qcommerce.Admin.Registry do
 
   @doc "Grouped registry entries filtered to what the given user can see."
   def grouped_for(nil), do: []
+
   def grouped_for(user) do
     all_for(user)
     |> Enum.group_by(& &1.group)
     |> Enum.sort_by(fn {group, _} -> group end)
   end
 
-  @doc "Convert a schema module name to a URL-safe slug, e.g. Qcommerce.Catalog.Product -> catalog-product"
+  @doc "Convert a schema module name to a URL-safe slug, e.g. Qcommerce.Catalog.Product -> product"
   def schema_to_slug(schema_mod) do
     schema_mod
     |> Module.split()
@@ -86,28 +148,77 @@ defmodule Qcommerce.Admin.Registry do
     |> String.replace("_", "-")
   end
 
+  @doc "Checks if a user has a specific permission on a config."
+  def can?(user, config, action) when action in [:create, :edit, :delete] do
+    roles = Map.get(config, :roles, [:super_admin])
+    roles == :all or user.role in roles
+  end
+
+  def can?(_user, _config, :show), do: true
+  def can?(_user, _config, _), do: false
+
+  # ---------------------------------------------------------------------------
+  # __using__ macro — injects admin_config/0 into each admin module
+  # ---------------------------------------------------------------------------
+
   defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
+    env = __CALLER__
+
+    label = Keyword.get(opts, :label, "Records")
+
+    label_singular =
+      Keyword.get(opts, :label_singular) ||
+        if String.ends_with?(label, "ies"),
+          do: String.replace_suffix(label, "ies", "y"),
+          else: String.replace_suffix(label, "s", "")
+
+    config = %{
+      schema:
+        opts
+        |> Keyword.fetch!(:schema)
+        |> Macro.expand(env),
+      context:
+        opts
+        |> Keyword.fetch!(:context)
+        |> Macro.expand(env),
+      label: label,
+      label_singular: label_singular,
+      group: Keyword.get(opts, :group, "General"),
+      icon: Keyword.get(opts, :icon, "hero-document"),
+      roles: Keyword.get(opts, :roles, [:super_admin]),
+      list_fields: Keyword.get(opts, :list_fields, [:id, :inserted_at]),
+      list_display_links: Keyword.get(opts, :list_display_links, [:id]),
+      list_select_related: Keyword.get(opts, :list_select_related, []),
+      list_per_page: Keyword.get(opts, :list_per_page, 25),
+      show_full_result_count: Keyword.get(opts, :show_full_result_count, true),
+      date_hierarchy: Keyword.get(opts, :date_hierarchy),
+      search_fields: Keyword.get(opts, :search_fields, []),
+      filters: Keyword.get(opts, :filters, []),
+      ordering: Keyword.get(opts, :ordering, ["-inserted_at"]),
+      readonly_fields: Keyword.get(opts, :readonly_fields, [:id, :inserted_at, :updated_at]),
+      fieldsets: Keyword.get(opts, :fieldsets),
+      prepopulated_fields: Keyword.get(opts, :prepopulated_fields, []),
+      save_on_top: Keyword.get(opts, :save_on_top, false),
+      empty_value_display: Keyword.get(opts, :empty_value_display, "—"),
+      actions: Keyword.get(opts, :actions, [:show, :edit, :delete]),
+      custom_actions: Keyword.get(opts, :custom_actions, []),
+      inlines:
+        Enum.map(Keyword.get(opts, :inlines, []), fn inline ->
+          inline
+          |> Map.update!(:schema, &Macro.expand(&1, env))
+          |> Map.update!(:context, &Macro.expand(&1, env))
+        end),
+      list_fn: Keyword.get(opts, :list_fn, :list),
+      get_fn: Keyword.get(opts, :get_fn, :get),
+      create_fn: Keyword.get(opts, :create_fn, :create),
+      update_fn: Keyword.get(opts, :update_fn, :update),
+      delete_fn: Keyword.get(opts, :delete_fn, :delete)
+    }
+
+    quote do
+      @doc "Returns the admin config map for this registered module."
       def admin_config do
-        %{
-          schema:          Keyword.fetch!(unquote(opts), :schema),
-          context:         Keyword.fetch!(unquote(opts), :context),
-          label:           Keyword.get(unquote(opts), :label, "Records"),
-          group:           Keyword.get(unquote(opts), :group, "General"),
-          icon:            Keyword.get(unquote(opts), :icon, "hero-document"),
-          roles:           Keyword.get(unquote(opts), :roles, [:super_admin]),
-          list_fields:     Keyword.get(unquote(opts), :list_fields, [:id, :inserted_at]),
-          search_fields:   Keyword.get(unquote(opts), :search_fields, []),
-          readonly_fields: Keyword.get(unquote(opts), :readonly_fields, [:id, :inserted_at, :updated_at]),
-          filters:         Keyword.get(unquote(opts), :filters, []),
-          actions:         Keyword.get(unquote(opts), :actions, [:show, :edit, :delete]),
-          per_page:        Keyword.get(unquote(opts), :per_page, 25),
-          list_fn:         Keyword.get(unquote(opts), :list_fn, :list),
-          get_fn:          Keyword.get(unquote(opts), :get_fn, :get),
-          create_fn:       Keyword.get(unquote(opts), :create_fn, :create),
-          update_fn:       Keyword.get(unquote(opts), :update_fn, :update),
-          delete_fn:       Keyword.get(unquote(opts), :delete_fn, :delete)
-        }
+        unquote(Macro.escape(config))
       end
     end
   end

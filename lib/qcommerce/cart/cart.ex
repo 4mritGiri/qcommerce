@@ -28,7 +28,9 @@ defmodule Qcommerce.Cart do
   """
   def get_share(token) when is_binary(token) do
     case Repo.get_by(CartShare, token: token) do
-      nil   -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
+
       share ->
         if CartShare.expired?(share) do
           {:error, :expired}
@@ -38,6 +40,7 @@ defmodule Qcommerce.Cart do
             from(s in CartShare, where: s.id == ^share.id),
             inc: [view_count: 1]
           )
+
           {:ok, share}
         end
     end
@@ -48,12 +51,13 @@ defmodule Qcommerce.Cart do
   """
   def deserialize_items(%CartShare{items: items}) do
     Map.new(items, fn {k, v} ->
-      {k, %{
-        qty:   v["qty"],
-        price: Decimal.new(v["price"]),
-        name:  v["name"],
-        emoji: v["emoji"]
-      }}
+      {k,
+       %{
+         qty: v["qty"],
+         price: Decimal.new(v["price"]),
+         name: v["name"],
+         emoji: v["emoji"]
+       }}
     end)
   end
 
@@ -67,6 +71,7 @@ defmodule Qcommerce.Cart do
     {count, _} =
       from(s in CartShare, where: s.expires_at < ^DateTime.utc_now())
       |> Repo.delete_all()
+
     {:ok, count}
   end
 
