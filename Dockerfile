@@ -97,6 +97,9 @@ ENV MIX_ENV="prod"
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/qcommerce ./
 
+# Ensure release binaries are executable
+RUN chmod +x /app/bin/server /app/bin/qcommerce
+
 # Copy entrypoint.sh and set executable permissions
 COPY --chown=nobody:root entrypoint.sh ./
 RUN chmod +x entrypoint.sh
