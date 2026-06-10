@@ -126,7 +126,7 @@ defmodule Qcommerce.Admin.UserAdmin do
       {"Access",        %{fields: [:role, :is_active]}},
       {"Security",      %{fields: [:password_hash], classes: ["collapse"]}}
     ],
-    date_hierarchy:       :inserted_at,
+    # date_hierarchy:       :inserted_at,
     custom_actions: [
       %{id: "activate_users",   label: "Activate",   icon: "hero-check-circle", confirm: false},
       %{id: "deactivate_users", label: "Deactivate", icon: "hero-x-circle",     confirm: true},
