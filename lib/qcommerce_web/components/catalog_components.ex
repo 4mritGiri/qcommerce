@@ -9,50 +9,26 @@ defmodule QcommerceWeb.Components.CatalogComponents do
   # Data helpers  (moved here from home_live.ex so components compile cleanly)
   # ---------------------------------------------------------------------------
 
-  def carousel_slides([]), do: static_slides()
-
   def carousel_slides(db_slides) do
-    Enum.map(db_slides, fn s ->
+    Enum.map(db_slides || [], fn s ->
       %{
         theme: s.theme,
         tag: s.tag,
         h2: s.heading,
         p: s.sub,
         cta: s.cta_label,
-        emoji: s.emojis,
-        products: Enum.map(s.products, &db_product_to_chip/1)
+        emoji: s.emojis || [],
+        products: Enum.map(s.products || [], &db_product_to_chip/1)
       }
     end)
   end
 
-  def category_list([]) do
-    [
-      %{emoji: "🥬", name: "Vegetables"},
-      %{emoji: "🍎", name: "Fruits"},
-      %{emoji: "🥛", name: "Dairy & Eggs"},
-      %{emoji: "🍞", name: "Bakery"},
-      %{emoji: "🥩", name: "Meat & Fish"},
-      %{emoji: "🧃", name: "Beverages"},
-      %{emoji: "🍫", name: "Snacks"},
-      %{emoji: "🧴", name: "Beauty"},
-      %{emoji: "🧹", name: "Cleaning"},
-      %{emoji: "👶", name: "Baby"},
-      %{emoji: "🐾", name: "Pet Care"},
-      %{emoji: "❄️", name: "Frozen"},
-      %{emoji: "🍳", name: "Breakfast"},
-      %{emoji: "🌿", name: "Organic"},
-      %{emoji: "💊", name: "Health"}
-    ]
-  end
-
   def category_list(cats) do
-    Enum.map(cats, fn c -> %{emoji: get_category_emoji(c.slug), name: c.name} end)
+    Enum.map(cats || [], fn c -> %{emoji: c.emoji || "🛍️", name: c.name} end)
   end
 
-  def product_display_list([], fallback), do: fallback
-
-  def product_display_list(db_products, _) do
-    Enum.map(db_products, fn p ->
+  def product_display_list(db_products) do
+    Enum.map(db_products || [], fn p ->
       disc = Product.discount_pct(p)
 
       %{
@@ -91,199 +67,6 @@ defmodule QcommerceWeb.Components.CatalogComponents do
   defp badge_class(_), do: "badge-sale"
   defp badge_label(nil), do: nil
   defp badge_label(pct), do: "#{pct}% off"
-
-  defp get_category_emoji(slug) do
-    case String.downcase(slug || "") do
-      "vegetables" -> "🥬"
-      "fruits" -> "🍎"
-      "dairy-eggs" -> "🥛"
-      "dairy" -> "🥛"
-      "bakery" -> "🍞"
-      "meat-fish" -> "🥩"
-      "meat" -> "🥩"
-      "beverages" -> "🧃"
-      "snacks" -> "🍫"
-      "beauty" -> "🧴"
-      "cleaning" -> "🧹"
-      "baby" -> "👶"
-      "pet-care" -> "🐾"
-      "frozen" -> "❄️"
-      "breakfast" -> "🍳"
-      "organic" -> "🌿"
-      "health" -> "💊"
-      _ -> "🛍️"
-    end
-  end
-
-  defp static_slides do
-    [
-      %{
-        theme: "slide-0",
-        tag: "⚡ 10 Min Delivery",
-        h2: "Freshness at <em>lightning speed</em>",
-        p: "5,000+ products · zero waiting",
-        cta: "Shop now",
-        emoji: ["🛒", "🥦", "🍎"],
-        products: [
-          %{
-            id: "s0-1",
-            emoji: "🥑",
-            name: "Organic Avocado Pack of 3",
-            badge: "NEW",
-            time: "10 mins",
-            price: "Rs. 89",
-            price_raw: "89"
-          },
-          %{
-            id: "s0-2",
-            emoji: "🫐",
-            name: "Fresh Blueberries 125g",
-            badge: "FRESH",
-            time: "10 mins",
-            price: "Rs. 149",
-            price_raw: "149"
-          },
-          %{
-            id: "s0-3",
-            emoji: "🥝",
-            name: "Kiwi Fruit 4pcs",
-            badge: "SALE",
-            time: "10 mins",
-            price: "Rs. 79",
-            price_raw: "79"
-          },
-          %{
-            id: "s0-4",
-            emoji: "🍓",
-            name: "Strawberries 250g",
-            badge: nil,
-            time: "10 mins",
-            price: "Rs. 119",
-            price_raw: "119"
-          },
-          %{
-            id: "s0-5",
-            emoji: "🥭",
-            name: "Alphonso Mango 500g",
-            badge: "HOT",
-            time: "10 mins",
-            price: "Rs. 189",
-            price_raw: "189"
-          }
-        ]
-      },
-      %{
-        theme: "slide-1",
-        tag: "🥛 Dairy Fresh",
-        h2: "Farm fresh <em>dairy</em> every morning",
-        p: "Delivered cold · certified organic",
-        cta: "Explore dairy",
-        emoji: ["🥛", "🧀", "🥚"],
-        products: [
-          %{
-            id: "s1-1",
-            emoji: "🥛",
-            name: "Farm Fresh Milk 500ml",
-            badge: nil,
-            time: "10 mins",
-            price: "Rs. 32",
-            price_raw: "32"
-          },
-          %{
-            id: "s1-2",
-            emoji: "🧀",
-            name: "Amul Processed Cheese 200g",
-            badge: nil,
-            time: "10 mins",
-            price: "Rs. 89",
-            price_raw: "89"
-          },
-          %{
-            id: "s1-3",
-            emoji: "🥚",
-            name: "Free Range Eggs Tray of 12",
-            badge: "SALE",
-            time: "10 mins",
-            price: "Rs. 95",
-            price_raw: "95"
-          },
-          %{
-            id: "s1-4",
-            emoji: "🧈",
-            name: "Amul Butter 100g",
-            badge: nil,
-            time: "10 mins",
-            price: "Rs. 55",
-            price_raw: "55"
-          },
-          %{
-            id: "s1-5",
-            emoji: "🍦",
-            name: "Greek Yogurt 400g",
-            badge: "NEW",
-            time: "10 mins",
-            price: "Rs. 79",
-            price_raw: "79"
-          }
-        ]
-      },
-      %{
-        theme: "slide-2",
-        tag: "🍫 Snacks & Munchies",
-        h2: "Late night <em>cravings</em> sorted",
-        p: "Chocolates, chips & more",
-        cta: "Shop snacks",
-        emoji: ["🍫", "🍿", "🧃"],
-        products: [
-          %{
-            id: "s2-1",
-            emoji: "🍫",
-            name: "Dairy Milk Silk 160g",
-            badge: nil,
-            time: "10 mins",
-            price: "Rs. 139",
-            price_raw: "139"
-          },
-          %{
-            id: "s2-2",
-            emoji: "🍿",
-            name: "Act II Popcorn Butter 30g",
-            badge: "HOT",
-            time: "10 mins",
-            price: "Rs. 25",
-            price_raw: "25"
-          },
-          %{
-            id: "s2-3",
-            emoji: "🥨",
-            name: "Pringles Original 107g",
-            badge: nil,
-            time: "10 mins",
-            price: "Rs. 179",
-            price_raw: "179"
-          },
-          %{
-            id: "s2-4",
-            emoji: "🧃",
-            name: "Real Fruit Mango 1L",
-            badge: "SALE",
-            time: "10 mins",
-            price: "Rs. 75",
-            price_raw: "75"
-          },
-          %{
-            id: "s2-5",
-            emoji: "🍬",
-            name: "Haribo Goldbears 200g",
-            badge: "NEW",
-            time: "10 mins",
-            price: "Rs. 149",
-            price_raw: "149"
-          }
-        ]
-      }
-    ]
-  end
 
   # ---------------------------------------------------------------------------
   # Section Header
@@ -523,7 +306,6 @@ defmodule QcommerceWeb.Components.CatalogComponents do
   # ---------------------------------------------------------------------------
   attr :title, :string, required: true
   attr :products, :list, required: true
-  attr :fallback, :list, default: []
   attr :cart_items, :map, default: %{}
 
   def product_section(assigns) do
@@ -531,7 +313,7 @@ defmodule QcommerceWeb.Components.CatalogComponents do
     <section class="section">
       <.section_head title={@title} />
       <div class="products-row">
-        <%= for p <- product_display_list(@products, @fallback) do %>
+        <%= for p <- product_display_list(@products) do %>
           <.product_card product={p} cart_items={@cart_items} />
         <% end %>
       </div>

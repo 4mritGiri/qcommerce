@@ -588,14 +588,96 @@ defmodule QcommerceWeb.CoreComponents do
       <.icon name="hero-x-mark-solid" />
       <.icon name="hero-arrow-path" class="ml-1 w-3 h-3 animate-spin" />
   """
-  attr :name, :string, required: true
+  attr :name, :string, default: nil
+  attr :icon, :string, default: nil
   attr :class, :string, default: nil
+  attr :rest, :global
 
-  def icon(%{name: "hero-" <> _} = assigns) do
-    ~H"""
-    <span class={[@name, @class]} />
-    """
+  def icon(assigns) do
+    class = assigns[:class] || "h-5 w-5"
+    name = assigns[:name] || assigns[:icon] || "hero-document"
+    rest_attrs = Map.delete(assigns.rest, :class)
+
+    cond do
+      # If the icon starts with an SVG tag, render it directly as raw HTML
+      String.starts_with?(name, "<svg") ->
+        attrs_str = Phoenix.HTML.Safe.to_iodata(Phoenix.HTML.attributes_escape(Map.put(rest_attrs, :class, class))) |> to_string()
+        modified_svg = String.replace(name, "<svg", "<svg#{attrs_str}")
+        assigns = assigns |> assign(:modified_svg, Phoenix.HTML.raw(modified_svg))
+        ~H"""
+        {@modified_svg}
+        """
+
+      # If it is a Heroicon (starts with "hero-"), load from local deps/heroicons
+      String.starts_with?(name, "hero-") ->
+        "hero-" <> rest = name
+        {type_dir, filename} =
+          cond do
+            String.ends_with?(rest, "-solid") ->
+              {"24/solid", String.replace_suffix(rest, "-solid", "")}
+            String.ends_with?(rest, "-mini") ->
+              {"20/solid", String.replace_suffix(rest, "-mini", "")}
+            String.ends_with?(rest, "-micro") ->
+              {"16/solid", String.replace_suffix(rest, "-micro", "")}
+            true ->
+              {"24/outline", rest}
+          end
+
+        path = Path.join(["deps", "heroicons", "optimized", type_dir, "#{filename}.svg"])
+
+        case File.read(path) do
+          {:ok, content} ->
+            attrs_str = Phoenix.HTML.Safe.to_iodata(Phoenix.HTML.attributes_escape(Map.put(rest_attrs, :class, class))) |> to_string()
+            modified = String.replace(content, "<svg", "<svg#{attrs_str}")
+            assigns = assign(assigns, :svg_content, Phoenix.HTML.raw(modified))
+            ~H"""
+            {@svg_content}
+            """
+
+          _ ->
+            ~H"""
+            <span class={[@name, @class]} {@rest} />
+            """
+        end
+
+      # If it's a file name, check if we can load the file from assets/icons/ or priv/static/icons/
+      svg_content = read_svg(name) ->
+        attrs_str = Phoenix.HTML.Safe.to_iodata(Phoenix.HTML.attributes_escape(Map.put(rest_attrs, :class, class))) |> to_string()
+        modified_svg = String.replace(svg_content, "<svg", "<svg#{attrs_str}")
+        assigns = assigns |> assign(:modified_svg, Phoenix.HTML.raw(modified_svg))
+        ~H"""
+        {@modified_svg}
+        """
+
+      # Otherwise, fallback to empty span
+      true ->
+        ~H"""
+        <span class={[@name, @class]} {@rest} />
+        """
+    end
   end
+
+  defp read_svg(icon) do
+    if is_binary(icon) and not String.contains?(icon, " ") do
+      paths = [
+        Path.join(["assets", "icons", "#{icon}.svg"]),
+        Path.join(["assets", "icons", icon]),
+        Path.join(["assets", "#{icon}.svg"]),
+        Path.join([:code.priv_dir(:qcommerce), "static", "icons", "#{icon}.svg"]),
+        Path.join([:code.priv_dir(:qcommerce), "static", "icons", icon])
+      ]
+
+      Enum.find_value(paths, fn path ->
+        case File.read(path) do
+          {:ok, content} -> content
+          _ -> nil
+        end
+      end)
+    else
+      nil
+    end
+  end
+
 
   ## JS Commands
 
