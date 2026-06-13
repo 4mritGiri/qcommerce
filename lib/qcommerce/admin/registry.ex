@@ -87,7 +87,10 @@ defmodule Qcommerce.Admin.Registry do
     Qcommerce.Admin.RiderAdmin,
     Qcommerce.Admin.BranchInventoryAdmin,
     Qcommerce.Admin.AccountAdmin,
-    Qcommerce.Admin.JournalAdmin
+    Qcommerce.Admin.JournalAdmin,
+    Qcommerce.Admin.ProvinceAdmin,
+    Qcommerce.Admin.DistrictAdmin,
+    Qcommerce.Admin.LocalBodyAdmin,
   ]
 
   # ---------------------------------------------------------------------------

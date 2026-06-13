@@ -1109,7 +1109,7 @@ defmodule QcommerceWeb.HomeLive do
   # staging, and production without hardcoding "qcom.app".
   # ---------------------------------------------------------------------------
 
-  defp build_share_url(socket, token) do
+  defp build_share_url(_socket, token) do
     # Phoenix.Endpoint.url/0 returns the configured URL for the current env,
     # e.g. "http://localhost:4000" in dev or "https://qcom.app" in prod.
     base = QcommerceWeb.Endpoint.url()

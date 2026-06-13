@@ -279,3 +279,54 @@ defmodule Qcommerce.Admin.JournalAdmin do
                            :outbox_event_id, :posted_at, :inserted_at],
     date_hierarchy:       :posted_at
 end
+
+# ---------------------------------------------------------------------------
+# Geography
+# ---------------------------------------------------------------------------
+defmodule Qcommerce.Admin.ProvinceAdmin do
+  use Qcommerce.Admin.Registry,
+    schema:               Qcommerce.Geography.Province,
+    context:              Qcommerce.Geography,
+    label:                "Province",
+    group:                "Geography",
+    icon:                 "map-location",
+    roles:                [:super_admin, :manager],
+    list_fields:          [:id, :name, :code, :name_nepali],
+    list_display_links:   [:id],
+    search_fields:        [:name, :code, :name_nepali],
+    ordering:             ["-id"],
+    # actions:              [:show],
+    readonly_fields:      [:id, :name, :code, :name_nepali]
+end
+
+defmodule Qcommerce.Admin.DistrictAdmin do
+  use Qcommerce.Admin.Registry,
+    schema:               Qcommerce.Geography.District,
+    context:              Qcommerce.Geography,
+    label:                "District",
+    group:                "Geography",
+    icon:                 "district",
+    roles:                [:super_admin, :manager],
+    list_fields:          [:id, :name, :name_nepali],
+    list_display_links:   [:id],
+    search_fields:        [:name, :name_nepali],
+    ordering:             ["-id"],
+    # actions:              [:show],
+    readonly_fields:      [:id, :name, :name_nepali]
+end
+
+defmodule Qcommerce.Admin.LocalBodyAdmin do
+  use Qcommerce.Admin.Registry,
+    schema:               Qcommerce.Geography.LocalBody,
+    context:              Qcommerce.Geography,
+    label:                "Local Body",
+    group:                "Geography",
+    icon:                 "my-location",
+    roles:                [:super_admin, :manager],
+    list_fields:          [:id, :name, :name_nepali, :type, :is_service_available],
+    list_display_links:   [:id],
+    search_fields:        [:name, :name_nepali],
+    ordering:             ["-id"],
+    # actions:              [:show],
+    readonly_fields:      [:id, :name, :name_nepali, :type, :is_service_available]
+end

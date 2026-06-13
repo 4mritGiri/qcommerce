@@ -12,7 +12,6 @@ defmodule QcommerceWeb.CartShareLive do
 
   alias QcommerceWeb.Paths
   alias Qcommerce.Cart
-  alias Qcommerce.Cart.CartShare
 
   @impl true
   def mount(%{"token" => token}, _session, socket) do
