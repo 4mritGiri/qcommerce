@@ -8,6 +8,7 @@ defmodule Qcommerce.Catalog.Category do
 
     field :name, :string
     field :slug, :string
+    field :emoji, :string
     field :image_url, :string
     field :sort_order, :integer, default: 0
     field :is_active, :boolean, default: true
@@ -19,7 +20,7 @@ defmodule Qcommerce.Catalog.Category do
   end
 
   @required [:name, :slug]
-  @optional [:parent_id, :image_url, :sort_order, :is_active]
+  @optional [:parent_id, :image_url, :sort_order, :is_active, :emoji]
 
   def changeset(category, attrs) do
     category
