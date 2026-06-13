@@ -8,8 +8,8 @@ defmodule QcommerceWeb.ProductLive do
   alias Qcommerce.Catalog
   alias Qcommerce.Catalog.Product
   alias Qcommerce.Cart.CartSession
-  alias QcommerceWeb.Components.{NavComponents, LayoutComponents, CartPanel}
-  alias QcommerceWeb.Components.ModalComponents
+  # alias QcommerceWeb.Components.{NavComponents, LayoutComponents, CartPanel}
+  # alias QcommerceWeb.Components.ModalComponents
 
   @tick_interval 1_000
 
