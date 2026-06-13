@@ -981,43 +981,11 @@ defmodule QcommerceWeb.Admin.ResourceLive do
 
         <span class="adm-spacer"></span>
 
-        <!-- Bulk actions -->
+        <!-- Bulk actions select dropdown -->
         <%= if length(@selected_ids) > 0 do %>
-          <span style="font-size:12px;color:var(--adm-text2);"><%= length(@selected_ids) %> selected</span>
-
-          <!-- Built-in delete -->
-          <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
-            <button phx-click="bulk_action" phx-value-action="delete"
-              class="adm-btn adm-btn-danger" style="font-size:11px;">
-              <QcommerceWeb.Layouts.sidebar_icon icon="trash" class="w-4 h-4" /> Delete Selected
-            </button>
-          <% end %>
-
-          <!-- Custom actions -->
-          <%= for action <- (@config.custom_actions || []) do %>
-            <button phx-click="bulk_action" phx-value-action={action.id}
-              class="adm-btn adm-btn-ghost" style="font-size:11px;"
-              title={action.label}>
-              <QcommerceWeb.Layouts.sidebar_icon icon={action[:icon] || "hero-cog-6-tooth"} class="w-4 h-4" />
-              <%= action.label %>
-            </button>
-          <% end %>
-        <% else %>
-          <!-- Always show CSV export if configured -->
-          <%= for _action <- Enum.filter(@config.custom_actions || [], &(&1.id == "export_csv")) do %>
-            <button phx-click="bulk_action" phx-value-action="export_csv"
-              class="adm-btn adm-btn-ghost" style="font-size:11px;">
-              <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-down-tray" class="w-4 h-4" />
-              Export
-            </button>
-          <% end %>
-        <% end %>
-
-        <!-- Selected Bulk actions -->
-        <%= if @selected_ids != [] do %>
           <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);padding:3px 10px;border-radius:20px;margin-right:8px;">
             <span style="font-size:11.5px;color:#f87171;font-weight:600;white-space:nowrap;">
-              {length(@selected_ids)} selected
+              <%= length(@selected_ids) %> selected
             </span>
             <form phx-submit="bulk_action" style="display:flex;align-items:center;gap:6px;margin:0;">
               <select
@@ -1029,6 +997,9 @@ defmodule QcommerceWeb.Admin.ResourceLive do
                 <%= if :delete in (@config.actions || [:show, :edit, :delete]) do %>
                   <option value="delete">Delete selected</option>
                 <% end %>
+                <%= for action <- (@config.custom_actions || []) do %>
+                  <option value={action.id}><%= action.label %></option>
+                <% end %>
               </select>
               <button
                 type="submit"
@@ -1039,6 +1010,15 @@ defmodule QcommerceWeb.Admin.ResourceLive do
               </button>
             </form>
           </div>
+        <% else %>
+          <!-- Always show CSV export if configured -->
+          <%= for _action <- Enum.filter(@config.custom_actions || [], &(&1.id == "export_csv")) do %>
+            <button phx-click="bulk_action" phx-value-action="export_csv"
+              class="adm-btn adm-btn-ghost" style="font-size:11px;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-down-tray" class="w-4 h-4" />
+              Export
+            </button>
+          <% end %>
         <% end %>
 
         <span style="font-size:11px;color:var(--adm-text2);">
