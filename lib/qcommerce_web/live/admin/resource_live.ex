@@ -86,16 +86,29 @@ defmodule QcommerceWeb.Admin.ResourceLive do
   # ---------------------------------------------------------------------------
 
   defp load_page(socket, config, action, params) do
-    q        = params["q"] || ""
-    page     = String.to_integer(params["page"] || "1")
-    sort_by  = params["sort_by"]  || default_sort_field(config)
-    sort_dir = params["sort_dir"] || default_sort_dir(config)
+    q    = params["q"] || ""
+    page = String.to_integer(params["page"] || "1")
+
+    # Django-style multi-column sort via `o` param (e.g. "1.-2.3")
+    # Fall back to legacy sort_by/sort_dir for backwards compat
+    sort_orders =
+      case params["o"] do
+        nil_or_empty when nil_or_empty in [nil, ""] ->
+          # Build from legacy or config default
+          legacy_by  = params["sort_by"]  || default_sort_field(config)
+          legacy_dir = params["sort_dir"] || default_sort_dir(config)
+          [{legacy_by, legacy_dir}]
+        o_str ->
+          parse_o_param(o_str, config)
+      end
+
+    # Legacy single sort aliases (kept for template assigns)
+    {sort_by, sort_dir} = List.first(sort_orders) || {"id", "desc"}
 
     filter_names = FieldHelper.filterable_fields(config.schema, config.filters)
                    |> Enum.map(&to_string(&1.name))
     filters = Map.take(params, filter_names)
 
-    # Date hierarchy drill-down params
     date_drill = %{
       "year"  => params["year"],
       "month" => params["month"],
@@ -109,6 +122,7 @@ defmodule QcommerceWeb.Admin.ResourceLive do
       |> assign(:page, page)
       |> assign(:sort_by, sort_by)
       |> assign(:sort_dir, sort_dir)
+      |> assign(:sort_orders, sort_orders)
       |> assign(:filters, filters)
       |> assign(:date_drill, date_drill)
 
@@ -136,24 +150,15 @@ defmodule QcommerceWeb.Admin.ResourceLive do
 
   defp per_page(config), do: Map.get(config, :list_per_page, 25)
 
-  defp load_list(socket, config, params) do
-    q        = params["q"] || ""
-    page     = String.to_integer(params["page"] || "1")
-    sort_by  = params["sort_by"]  || default_sort_field(config)
-    sort_dir = params["sort_dir"] || default_sort_dir(config)
-
-    filter_names = FieldHelper.filterable_fields(config.schema, config.filters)
-                   |> Enum.map(&to_string(&1.name))
-    filters = Map.take(params, filter_names)
-
-    date_drill = %{
-      "year"  => params["year"],
-      "month" => params["month"],
-      "day"   => params["day"]
-    } |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Map.new()
+  defp load_list(socket, config, _params) do
+    q          = socket.assigns.search    || ""
+    page       = socket.assigns.page      || 1
+    sort_orders = socket.assigns[:sort_orders] || [{socket.assigns[:sort_by] || "id", socket.assigns[:sort_dir] || "desc"}]
+    filters    = socket.assigns.filters   || %{}
+    date_drill = socket.assigns.date_drill || %{}
 
     pp = per_page(config)
-    {records, total} = fetch_list(config, q, page, sort_by, sort_dir, filters, date_drill, pp)
+    {records, total} = fetch_list_multi(config, q, page, sort_orders, filters, date_drill, pp)
     filter_opts = FieldHelper.fetch_filter_options(config.schema, config.filters)
     slug = socket.assigns.resource_slug
 
@@ -248,7 +253,8 @@ defmodule QcommerceWeb.Admin.ResourceLive do
   # Data fetching
   # ---------------------------------------------------------------------------
 
-  defp fetch_list(config, q, page, sort_by, sort_dir, filters, date_drill, pp) do
+
+  defp fetch_list_multi(config, q, page, sort_orders, filters, date_drill, pp) do
     base =
       from(r in config.schema)
       |> maybe_search(config, q)
@@ -257,15 +263,20 @@ defmodule QcommerceWeb.Admin.ResourceLive do
 
     total = Repo.aggregate(base, :count)
 
-    offset_val      = (page - 1) * pp
-    order_field     = String.to_atom(sort_by)
-    order_direction = String.to_atom(sort_dir)
+    offset_val = (page - 1) * pp
+
+    # Build order_by by reducing each sort column
+    ordered_query =
+      Enum.reduce(sort_orders, base, fn {field_str, dir_str}, query ->
+        f   = String.to_atom(field_str)
+        dir = String.to_atom(dir_str)
+        order_by(query, [r], [{^dir, field(r, ^f)}])
+      end)
 
     records =
-      base
+      ordered_query
       |> limit(^pp)
       |> offset(^offset_val)
-      |> order_by([r], [{^order_direction, field(r, ^order_field)}])
       |> Repo.all()
 
     {records, total}
@@ -421,16 +432,40 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     {:noreply, push_patch(socket, to: current_path(socket, %{"page" => to_string(p)}))}
   end
 
+  def handle_event("sort", %{"field" => field_name, "multi" => "true"}, socket) do
+    # Multi-sort: append/cycle/remove this field in the sort_orders list
+    orders = socket.assigns[:sort_orders] || [{socket.assigns.sort_by, socket.assigns.sort_dir}]
+    new_orders =
+      case Enum.find_index(orders, fn {f, _} -> f == field_name end) do
+        nil ->
+          # Not in list — add as asc at end
+          orders ++ [{field_name, "asc"}]
+        idx ->
+          {_, cur_dir} = Enum.at(orders, idx)
+          if cur_dir == "asc" do
+            # asc → desc
+            List.replace_at(orders, idx, {field_name, "desc"})
+          else
+            # desc → remove
+            List.delete_at(orders, idx)
+          end
+      end
+    new_orders = if new_orders == [], do: [{"id", "desc"}], else: new_orders
+    o_str = encode_o_param(new_orders, socket.assigns.list_fields)
+    {:noreply, push_patch(socket, to: current_path(socket, %{"o" => o_str, "page" => "1"}))}
+  end
+
   def handle_event("sort", %{"field" => field_name}, socket) do
-    current_by  = socket.assigns.sort_by
-    current_dir = socket.assigns.sort_dir
-
-    {new_by, new_dir} =
-      if current_by == field_name,
-        do:   {field_name, if(current_dir == "asc", do: "desc", else: "asc")},
-        else: {field_name, "asc"}
-
-    {:noreply, push_patch(socket, to: current_path(socket, %{"sort_by" => new_by, "sort_dir" => new_dir, "page" => "1"}))}
+    # Single-sort: replace entire sort with just this field (Django default click)
+    orders = socket.assigns[:sort_orders] || []
+    new_orders =
+      case Enum.find(orders, fn {f, _} -> f == field_name end) do
+        nil              -> [{field_name, "asc"}]
+        {_, "asc"}  -> [{field_name, "desc"}]
+        {_, "desc"} -> [{field_name, "asc"}]
+      end
+    o_str = encode_o_param(new_orders, socket.assigns.list_fields)
+    {:noreply, push_patch(socket, to: current_path(socket, %{"o" => o_str, "page" => "1"}))}
   end
 
   # Filter dropdown
@@ -931,20 +966,63 @@ defmodule QcommerceWeb.Admin.ResourceLive do
   # ---------------------------------------------------------------------------
 
   defp current_path(socket, extra_params) do
-    slug     = socket.assigns.resource_slug
-    q        = socket.assigns[:search]    || ""
-    page     = socket.assigns[:page]      || 1
-    sort_by  = socket.assigns[:sort_by]   || "id"
-    sort_dir = socket.assigns[:sort_dir]  || "desc"
-    filters  = socket.assigns[:filters]   || %{}
+    slug    = socket.assigns.resource_slug
+    q       = socket.assigns[:search]  || ""
+    page    = socket.assigns[:page]    || 1
+    filters = socket.assigns[:filters] || %{}
+    orders  = socket.assigns[:sort_orders] || []
+    list_fields = socket.assigns[:list_fields] || []
+
+    o_str = encode_o_param(orders, list_fields)
 
     params =
-      %{"q" => q, "page" => to_string(page), "sort_by" => sort_by, "sort_dir" => sort_dir}
+      %{"q" => q, "page" => to_string(page), "o" => o_str}
       |> Map.merge(filters)
       |> Map.merge(extra_params)
+      |> Enum.reject(fn {_, v} -> v == "" or is_nil(v) end)
+      |> Map.new()
       |> URI.encode_query()
 
     "/admin/r/#{slug}?#{params}"
+  end
+
+  # Encode sort_orders list to Django-style "o" param: "1.-2.3"
+  defp encode_o_param([], _fields), do: ""
+  defp encode_o_param(orders, fields) do
+    field_names = Enum.map(fields, &to_string(&1.name))
+    orders
+    |> Enum.flat_map(fn {field_str, dir} ->
+      idx = Enum.find_index(field_names, &(&1 == field_str))
+      if idx do
+        col = idx + 1
+        [if(dir == "desc", do: "-#{col}", else: "#{col}")]
+      else
+        []
+      end
+    end)
+    |> Enum.join(".")
+  end
+
+  # Parse "o" param back to [{field_str, dir}] list
+  defp parse_o_param(o_str, config) do
+    fields = FieldHelper.fields_for(config.schema, config.list_fields)
+    field_names = Enum.map(fields, &to_string(&1.name))
+    o_str
+    |> String.split(".")
+    |> Enum.flat_map(fn part ->
+      {neg, idx_str} = if String.starts_with?(part, "-"), do: {true, String.slice(part, 1..-1//1)}, else: {false, part}
+      case Integer.parse(idx_str) do
+        {n, ""} when n >= 1 and n <= length(field_names) ->
+          field_str = Enum.at(field_names, n - 1)
+          dir = if neg, do: "desc", else: "asc"
+          [{field_str, dir}]
+        _ -> []
+      end
+    end)
+    |> case do
+      [] -> [{default_sort_field(config), default_sort_dir(config)}]
+      list -> list
+    end
   end
 
   defp stringify_keys(map) when is_map(map) do
@@ -1414,20 +1492,37 @@ defmodule QcommerceWeb.Admin.ResourceLive do
                     checked={all_sel and length(all_ids) > 0}
                     style="cursor:pointer;accent-color:var(--adm-accent);" />
                 </th>
-                <%= for field <- @list_fields do %>
-                  <th style={"cursor:#{if FieldHelper.sortable?(field), do: "pointer", else: "default"};user-select:none;"}
+                <%= for {field, _col_idx} <- Enum.with_index(@list_fields, 1) do %>
+                  <% field_str = to_string(field.name) %>
+                  <% sort_entry = Enum.find_index(@sort_orders, fn {f, _} -> f == field_str end) %>
+                  <% sort_pos   = if sort_entry != nil, do: sort_entry + 1, else: nil %>
+                  <% sort_dir_for = if sort_entry != nil, do: elem(Enum.at(@sort_orders, sort_entry), 1), else: nil %>
+                  <% is_sorted  = sort_pos != nil %>
+                  <% multi_sort = length(@sort_orders) > 1 %>
+                  <th
+                    style={"cursor:#{if FieldHelper.sortable?(field), do: "pointer", else: "default"};user-select:none;#{if is_sorted, do: "color:var(--adm-accent2);", else: ""}"}
                     phx-click={if FieldHelper.sortable?(field), do: "sort", else: nil}
-                    phx-value-field={to_string(field.name)}>
-                    <div style="display:flex;align-items:center;">
+                    phx-value-field={field_str}
+                    title={if FieldHelper.sortable?(field), do: "Click to sort · Hold Shift to multi-sort", else: nil}
+                  >
+                    <div style="display:flex;align-items:center;gap:4px;white-space:nowrap;">
                       <%= field.label %>
-                      <%= if @sort_by == to_string(field.name) do %>
-                        <span style="color:var(--adm-accent2);margin-left:2px;">
-                          <%= if @sort_dir == "asc" do %>
-                            <QcommerceWeb.Layouts.sidebar_icon icon="arrow-up" class="w-3 h-3" />
-                          <% else %>
-                            <QcommerceWeb.Layouts.sidebar_icon icon="arrow-down" class="w-3 h-3" />
+                      <%= if is_sorted do %>
+                        <span style="display:inline-flex;align-items:center;gap:1px;color:var(--adm-accent2);">
+                          <%= if multi_sort do %>
+                            <span style="font-size:9px;font-weight:700;background:var(--adm-accent);color:#fff;
+                                         border-radius:3px;padding:0 3px;line-height:15px;margin-right:1px;">
+                              <%= sort_pos %>
+                            </span>
                           <% end %>
+                          <span style="font-size:11px;font-weight:700;">
+                            <%= if sort_dir_for == "asc", do: "▲", else: "▼" %>
+                          </span>
                         </span>
+                      <% else %>
+                        <%= if FieldHelper.sortable?(field) do %>
+                          <span style="font-size:11px;opacity:0.3;">↕</span>
+                        <% end %>
                       <% end %>
                     </div>
                   </th>
