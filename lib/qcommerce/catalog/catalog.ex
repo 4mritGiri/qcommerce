@@ -57,6 +57,13 @@ defmodule Qcommerce.Catalog do
     |> handle_result()
   end
 
+  def delete_product(%Product{} = product) do
+    product
+    |> Product.deactivate_changeset()
+    |> Repo.update()
+    |> handle_result()
+  end
+
   # ---------------------------------------------------------------------------
   # Categories
   # ---------------------------------------------------------------------------
@@ -80,10 +87,24 @@ defmodule Qcommerce.Catalog do
     end
   end
 
+  def get_category_by_slug(slug) when is_binary(slug) do
+    case Repo.get_by(Category, slug: slug) do
+      nil -> {:error, Error.not_found("Category")}
+      category -> {:ok, category}
+    end
+  end
+
   def create_category(attrs) do
     %Category{}
     |> Category.changeset(attrs)
     |> Repo.insert()
+    |> handle_result()
+  end
+
+  def update_category(%Category{} = category, attrs) do
+    category
+    |> Category.changeset(attrs)
+    |> Repo.update()
     |> handle_result()
   end
 
@@ -107,6 +128,13 @@ defmodule Qcommerce.Catalog do
     %Slide{}
     |> Slide.changeset(attrs)
     |> Repo.insert()
+    |> handle_result()
+  end
+
+  def update_slide(%Slide{} = slide, attrs) do
+    slide
+    |> Slide.changeset(attrs)
+    |> Repo.update()
     |> handle_result()
   end
 
@@ -136,6 +164,20 @@ defmodule Qcommerce.Catalog do
     %FlashSale{}
     |> FlashSale.changeset(attrs)
     |> Repo.insert()
+    |> handle_result()
+  end
+
+  def update_flash_sale(%FlashSale{} = sale, attrs) do
+    sale
+    |> FlashSale.changeset(attrs)
+    |> Repo.update()
+    |> handle_result()
+  end
+
+  def deactivate_flash_sale(%FlashSale{} = sale) do
+    sale
+    |> Ecto.Changeset.change(is_active: false)
+    |> Repo.update()
     |> handle_result()
   end
 

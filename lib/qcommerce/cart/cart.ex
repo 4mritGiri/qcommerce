@@ -56,7 +56,8 @@ defmodule Qcommerce.Cart do
          qty: v["qty"],
          price: Decimal.new(v["price"]),
          name: v["name"],
-         emoji: v["emoji"]
+         emoji: v["emoji"],
+         savings_per_unit: v["savings_per_unit"] || 0
        }}
     end)
   end
@@ -75,9 +76,22 @@ defmodule Qcommerce.Cart do
     {:ok, count}
   end
 
-  @doc "Short share URL for display and copying."
+  @doc """
+  Builds a share URL that works in every environment (dev, staging, prod).
+
+  Reads from the Phoenix endpoint config so localhost:4000 is used in dev
+  and the real domain in production — no hardcoded hostname.
+  Falls back to the application-level :base_url config if the endpoint is
+  not available (e.g. in tests or background jobs run before the endpoint starts).
+  """
   def share_url(token) do
-    base = Application.get_env(:qcommerce, :base_url, "https://qcom.app")
+    base =
+      try do
+        QcommerceWeb.Endpoint.url()
+      rescue
+        _ -> Application.get_env(:qcommerce, :base_url, "https://qcom.app")
+      end
+
     "#{base}/cart/share/#{token}"
   end
 end

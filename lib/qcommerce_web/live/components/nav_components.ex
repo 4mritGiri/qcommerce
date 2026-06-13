@@ -196,16 +196,17 @@ defmodule QcommerceWeb.Live.Components.NavComponents do
               <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px">
                 🔍
               </span>
+              <form phx-change="location_search" phx-submit="location_search" style="margin:0">
               <input
                 type="text"
                 placeholder="Search area, street, landmark…"
                 value={@location_search}
-                phx-input="location_search"
                 phx-debounce="200"
                 name="query"
                 autocomplete="off"
                 style="width:100%;padding:10px 12px 10px 32px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none"
               />
+              </form>
             </div>
 
             <%= for loc <- @location_results do %>

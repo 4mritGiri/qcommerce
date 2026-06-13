@@ -112,8 +112,70 @@ defmodule QcommerceWeb.HomeLive do
       |> assign(:share_url, nil)
       |> assign(:share_seconds_left, 0)
       |> assign(:show_share_qr, false)
+      # Incoming shared-cart modal (Blinkit-style)
+      |> assign(:show_shared_cart_modal, false)
+      |> assign(:shared_cart_share, nil)
+      |> assign(:shared_cart_items, %{})
 
     {:ok, socket, layout: false}
+  end
+
+  # ---------------------------------------------------------------------------
+  # Params — show Blinkit-style modal when redirected from CartShareLive
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_params(%{"shared_cart" => token}, _uri, socket) do
+    socket =
+      case Qcommerce.Cart.get_share(token) do
+        {:ok, share} ->
+          shared_items = Qcommerce.Cart.deserialize_items(share)
+
+          socket
+          |> assign(:show_shared_cart_modal, true)
+          |> assign(:shared_cart_share, share)
+          |> assign(:shared_cart_items, shared_items)
+
+        {:error, :expired} ->
+          put_flash(socket, :error, "This cart share link has expired.")
+
+        _ ->
+          put_flash(socket, :error, "Cart share link not found.")
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
+  # ---------------------------------------------------------------------------
+  # Shared-cart modal events
+  # ---------------------------------------------------------------------------
+
+  def handle_event("confirm_add_shared_cart", _, socket) do
+    shared_items = socket.assigns.shared_cart_items
+    merged = CartSession.merge(socket.assigns.cart_items, shared_items)
+    {count, total} = CartSession.cart_totals(merged)
+    n = map_size(shared_items)
+
+    {:noreply,
+     socket
+     |> assign(:cart_items, merged)
+     |> assign(:cart_count, count)
+     |> assign(:cart_total, total)
+     |> assign(:show_cart, true)
+     |> assign(:show_shared_cart_modal, false)
+     |> assign(:shared_cart_share, nil)
+     |> assign(:shared_cart_items, %{})
+     |> put_flash(:info, "#{n} #{if n == 1, do: "item", else: "items"} added to your cart!")}
+  end
+
+  def handle_event("dismiss_shared_cart", _, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_shared_cart_modal, false)
+     |> assign(:shared_cart_share, nil)
+     |> assign(:shared_cart_items, %{})}
   end
 
   # ---------------------------------------------------------------------------
@@ -292,15 +354,37 @@ defmodule QcommerceWeb.HomeLive do
     name = if product, do: product.name, else: "Product"
     emoji = if product, do: Map.get(product, :emoji, "🛒"), else: "🛒"
 
+    # Compute per-unit savings so CartPanel can show the savings banner
+    savings_per_unit =
+      case product do
+        %{old_price: old} when not is_nil(old) ->
+          old_d = parse_price(old)
+          diff = Decimal.sub(old_d, price_d)
+
+          if Decimal.gt?(diff, Decimal.new(0)),
+            do: Decimal.to_integer(Decimal.round(diff, 0)),
+            else: 0
+
+        _ ->
+          0
+      end
+
+    new_entry = %{
+      qty: 1,
+      price: price_d,
+      name: name,
+      emoji: emoji,
+      savings_per_unit: savings_per_unit
+    }
+
     items =
       Map.update(
         socket.assigns.cart_items,
         pid,
-        %{qty: 1, price: price_d, name: name, emoji: emoji},
+        new_entry,
         fn i -> %{i | qty: i.qty + 1} end
       )
 
-    # BUG FIX 1: cart_count = unique product lines, NOT sum of quantities
     {count, total} = CartSession.cart_totals(items)
     {:noreply, assign(socket, cart_items: items, cart_count: count, cart_total: total)}
   end
@@ -336,7 +420,9 @@ defmodule QcommerceWeb.HomeLive do
 
     case Qcommerce.Cart.create_share(socket.assigns.cart_items, creator_id) do
       {:ok, share} ->
-        url = Qcommerce.Cart.share_url(share.token)
+        # Build the share URL from the current request's host so it works on
+        # localhost, staging, and production without hardcoding a domain.
+        url = build_share_url(socket, share.token)
 
         {:noreply,
          socket
@@ -976,8 +1062,19 @@ defmodule QcommerceWeb.HomeLive do
     end
   end
 
-  defp safe_products(_slug, per_page) do
-    case Catalog.list_products(is_active: true, per_page: per_page) do
+  defp safe_products(slug, per_page) do
+    params =
+      if slug do
+        # Resolve slug → category_id so the DB query can filter properly
+        case Qcommerce.Catalog.get_category_by_slug(slug) do
+          {:ok, cat} -> [is_active: true, per_page: per_page, category_id: cat.id]
+          _ -> [is_active: true, per_page: per_page]
+        end
+      else
+        [is_active: true, per_page: per_page]
+      end
+
+    case Catalog.list_products(params) do
       {:ok, {prods, _}} -> prods
       _ -> []
     end
@@ -1006,6 +1103,18 @@ defmodule QcommerceWeb.HomeLive do
   defp badge_class(_), do: "badge-sale"
   defp badge_label(nil), do: nil
   defp badge_label(pct), do: "#{pct}% off"
+
+  # ---------------------------------------------------------------------------
+  # Share URL — built from the socket's endpoint so it works on localhost,
+  # staging, and production without hardcoding "qcom.app".
+  # ---------------------------------------------------------------------------
+
+  defp build_share_url(socket, token) do
+    # Phoenix.Endpoint.url/0 returns the configured URL for the current env,
+    # e.g. "http://localhost:4000" in dev or "https://qcom.app" in prod.
+    base = QcommerceWeb.Endpoint.url()
+    "#{base}/cart/share/#{token}"
+  end
 
   defp parse_price(p) when is_binary(p) do
     case Decimal.parse(p) do

@@ -110,7 +110,14 @@
 <%!-- SIGNUP MODAL --%>
 <ModalComponents.signup_modal show_signup_modal={@show_signup_modal} />
 
-<%!-- GPS JS --%>
+<%!-- SHARED CART MODAL (Blinkit-style) — shown when visiting a share link --%>
+<ModalComponents.shared_cart_modal
+  show_shared_cart_modal={@show_shared_cart_modal}
+  shared_cart_items={@shared_cart_items}
+  shared_cart_share={@shared_cart_share}
+/>
+
+<%!-- GPS JS — also registers GpsDetect hook for reliable LiveView event routing --%>
 <CatalogComponents.gps_js />
 
 <%!-- MOBILE NAV JS --%>

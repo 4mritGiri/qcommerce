@@ -311,4 +311,94 @@ defmodule QcommerceWeb.Live.Components.ModalComponents do
     <% end %>
     """
   end
+
+  # ---------------------------------------------------------------------------
+  # Shared-cart modal — Blinkit style
+  # Opens as an overlay on the homepage when visiting a /cart/share/:token link.
+  # ---------------------------------------------------------------------------
+
+  attr :show_shared_cart_modal, :boolean, default: false
+  attr :shared_cart_items, :map, default: %{}
+  attr :shared_cart_share, :map, default: nil
+
+  def shared_cart_modal(assigns) do
+    ~H"""
+    <%= if @show_shared_cart_modal && @shared_cart_share do %>
+      <%!-- Backdrop --%>
+      <div
+        style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px"
+        phx-click="dismiss_shared_cart"
+      >
+        <%!-- Card — stop click from bubbling to backdrop --%>
+        <div
+          style="background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 16px 48px rgba(0,0,0,.18);overflow:hidden;display:flex;flex-direction:column;max-height:90vh"
+          phx-click=""
+        >
+          <%!-- Header --%>
+          <div style="padding:20px 20px 14px;border-bottom:1px solid #e5e7eb;flex-shrink:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <h2 style="font-size:18px;font-weight:800;color:#111827;margin:0">
+                Items shared with you!
+              </h2>
+              <button
+                phx-click="dismiss_shared_cart"
+                style="width:30px;height:30px;border-radius:50%;border:1.5px solid #e5e7eb;background:#f9fafb;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6b7280;flex-shrink:0"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <%!-- Scrollable item list --%>
+          <div style="overflow-y:auto;flex:1;padding:8px 0">
+            <%= for {_pid, item} <- @shared_cart_items do %>
+              <div style="display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid #f3f4f6">
+                <div style="width:52px;height:52px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">
+                  {item.emoji}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    {item.name}
+                  </div>
+                  <div style="font-size:12px;color:#6b7280;margin-top:3px">
+                    Rs. {Decimal.to_string(item.price)} × {item.qty}
+                  </div>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:#16a34a;flex-shrink:0">
+                  Rs. {item.price |> Decimal.mult(Decimal.new(item.qty)) |> Decimal.round(0) |> Decimal.to_string()}
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%!-- Footer CTAs --%>
+          <div style="padding:16px 20px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;gap:10px;flex-shrink:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#6b7280;margin-bottom:2px">
+              <span>{map_size(@shared_cart_items)} items · Free delivery</span>
+              <span style="font-size:16px;font-weight:800;color:#111827">
+                Rs. {@shared_cart_share.total |> Decimal.round(0) |> Decimal.to_string()}
+              </span>
+            </div>
+            <button
+              phx-click="confirm_add_shared_cart"
+              style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s"
+              onmouseover="this.style.opacity='.88'"
+              onmouseout="this.style.opacity='1'"
+            >
+              Add To Cart
+            </button>
+            <button
+              phx-click="dismiss_shared_cart"
+              style="width:100%;padding:12px;background:#fff;color:#16a34a;border:1.5px solid #16a34a;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s"
+              onmouseover="this.style.background='#f0fdf4'"
+              onmouseout="this.style.background='#fff'"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
 end

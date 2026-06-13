@@ -569,27 +569,56 @@ defmodule QcommerceWeb.Live.Components.CatalogComponents do
   # ---------------------------------------------------------------------------
   def gps_js(assigns) do
     ~H"""
+    <div id="gps-hook" phx-hook="GpsDetect" style="display:none"></div>
     <script>
+      // Helper: push event to the LiveView that owns the element
+      function pushToLV(eventName, payload) {
+        // Find any live view element and push through its hook/channel
+        const lvEl = document.querySelector("[data-phx-main]") ||
+                     document.querySelector("[data-phx-session]");
+        if (lvEl && window.liveSocket) {
+          const view = window.liveSocket.getViewByEl(lvEl);
+          if (view) { view.pushEvent(eventName, payload); return; }
+        }
+        // Fallback: dispatch a DOM event that Phoenix LiveView will pick up
+        // via window phx event listeners
+        window.dispatchEvent(new CustomEvent("phx:" + eventName, { detail: payload }));
+      }
+
       window.addEventListener("phx:detect_gps", () => {
         if (!navigator.geolocation) {
-          window.liveSocket?.main?.pushEvent("gps_denied", {});
+          pushToLV("gps_denied", {});
           return;
         }
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            const {latitude: lat, longitude: lng} = pos.coords;
-            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+            const { latitude: lat, longitude: lng } = pos.coords;
+            fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+            )
               .then(r => r.json())
               .then(data => {
                 const a = data.address || {};
-                const label = [a.suburb, a.city_district, a.city || a.town || a.village].filter(Boolean).join(", ");
-                window.liveSocket?.main?.pushEvent("gps_location", {lat, lng, address: label});
+                // Build a readable Nepal-style label
+                const parts = [
+                  a.neighbourhood || a.suburb,
+                  a.city_district,
+                  a.city || a.town || a.village || a.county
+                ].filter(Boolean);
+                const label = parts.length ? parts.join(", ") : "";
+                pushToLV("gps_location", { lat, lng, address: label });
               })
-              .catch(() => window.liveSocket?.main?.pushEvent("gps_location", {lat, lng, address: ""}));
+              .catch(() => pushToLV("gps_location", { lat, lng, address: "" }));
           },
-          () => window.liveSocket?.main?.pushEvent("gps_denied", {})
+          (_err) => pushToLV("gps_denied", {})
         );
       });
+
+      // Register the hook so the element stays alive across LiveView patches
+      window.GpsDetect = window.GpsDetect || {
+        mounted() {},
+        updated() {}
+      };
     </script>
     """
   end

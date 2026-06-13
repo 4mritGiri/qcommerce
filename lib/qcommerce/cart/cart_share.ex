@@ -30,9 +30,9 @@ defmodule Qcommerce.Cart.CartShare do
   @foreign_key_type :binary_id
 
   schema "cart_shares" do
-    field :token,      :string
-    field :items,      :map
-    field :total,      :decimal
+    field :token, :string
+    field :items, :map
+    field :total, :decimal
     field :item_count, :integer
     field :expires_at, :utc_datetime
     field :view_count, :integer, default: 0
@@ -51,15 +51,17 @@ defmodule Qcommerce.Cart.CartShare do
   end
 
   def build(cart_items, creator_id \\ nil) do
-    total     = compute_total(cart_items)
+    total = compute_total(cart_items)
     item_count = Enum.reduce(cart_items, 0, fn {_, i}, acc -> acc + i.qty end)
-    expires_at = DateTime.utc_now() |> DateTime.add(@ttl_hours * 3600, :second) |> DateTime.truncate(:second)
+
+    expires_at =
+      DateTime.utc_now() |> DateTime.add(@ttl_hours * 3600, :second) |> DateTime.truncate(:second)
 
     %__MODULE__{}
     |> changeset(%{
-      token:      generate_token(),
-      items:      serialize_items(cart_items),
-      total:      total,
+      token: generate_token(),
+      items: serialize_items(cart_items),
+      total: total,
       item_count: item_count,
       creator_id: creator_id,
       expires_at: expires_at
@@ -86,18 +88,24 @@ defmodule Qcommerce.Cart.CartShare do
 
   defp serialize_items(items) do
     Map.new(items, fn {k, v} ->
-      {to_string(k), %{
-        "qty"   => v.qty,
-        "price" => Decimal.to_string(parse_price(v.price)),
-        "name"  => v.name,
-        "emoji" => v.emoji
-      }}
+      {to_string(k),
+       %{
+         "qty" => v.qty,
+         "price" => Decimal.to_string(parse_price(v.price)),
+         "name" => v.name,
+         "emoji" => v.emoji,
+         "savings_per_unit" => Map.get(v, :savings_per_unit, 0)
+       }}
     end)
   end
 
   defp parse_price(p) when is_binary(p) do
-    case Decimal.parse(p) do {d, _} -> d; :error -> Decimal.new("0") end
+    case Decimal.parse(p) do
+      {d, _} -> d
+      :error -> Decimal.new("0")
+    end
   end
+
   defp parse_price(%Decimal{} = d), do: d
   defp parse_price(p), do: Decimal.new("#{p}")
 end
