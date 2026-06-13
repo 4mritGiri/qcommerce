@@ -278,4 +278,26 @@ function addHidden(form, name, value) {
   form.appendChild(input)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SortHeader
+// Detects Shift+click on sortable column headers to enable multi-column sort.
+// Normal click → pushEvent("sort", {field})
+// Shift+click  → pushEvent("sort", {field, multi: "true"})
+// ─────────────────────────────────────────────────────────────────────────────
+Hooks.SortHeader = {
+  mounted() {
+    this.el.addEventListener("click", (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const field = this.el.dataset.field
+      if (!field) return
+      if (e.shiftKey) {
+        this.pushEvent("sort", { field, multi: "true" })
+      } else {
+        this.pushEvent("sort", { field })
+      }
+    })
+  }
+}
+
 export default Hooks

@@ -1501,9 +1501,10 @@ defmodule QcommerceWeb.Admin.ResourceLive do
                   <% multi_sort = length(@sort_orders) > 1 %>
                   <th
                     style={"cursor:#{if FieldHelper.sortable?(field), do: "pointer", else: "default"};user-select:none;#{if is_sorted, do: "color:var(--adm-accent2);", else: ""}"}
-                    phx-click={if FieldHelper.sortable?(field), do: "sort", else: nil}
-                    phx-value-field={field_str}
-                    title={if FieldHelper.sortable?(field), do: "Click to sort · Hold Shift to multi-sort", else: nil}
+                    id={"sort-th-#{field_str}"}
+                    phx-hook={if FieldHelper.sortable?(field), do: "SortHeader", else: nil}
+                    data-field={if FieldHelper.sortable?(field), do: field_str, else: nil}
+                    title={if FieldHelper.sortable?(field), do: "Click · Shift+Click to multi-sort", else: nil}
                   >
                     <div style="display:flex;align-items:center;gap:4px;white-space:nowrap;">
                       <%= field.label %>
