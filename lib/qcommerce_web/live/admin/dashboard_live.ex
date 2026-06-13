@@ -250,7 +250,7 @@ defmodule QcommerceWeb.Admin.DashboardLive do
     <div class="adm-card">
       <div class="adm-card-header">
         <span class="adm-card-title" style="display:inline-flex;align-items:center;gap:6px;">
-          <QcommerceWeb.Layouts.sidebar_icon icon="hero-bolt" class="w-5 h-5" />
+          <QcommerceWeb.Layouts.sidebar_icon icon="flash" class="w-5 h-5" />
           Quick Actions
         </span>
       </div>
@@ -264,7 +264,7 @@ defmodule QcommerceWeb.Admin.DashboardLive do
         <%= if @role == :super_admin do %>
           <a href="/admin/r/user/new" class="adm-btn adm-btn-ghost">+ Add User</a>
           <a href="/admin/settings" class="adm-btn adm-btn-ghost" style="display:inline-flex;align-items:center;gap:4px;">
-            <QcommerceWeb.Layouts.sidebar_icon icon="hero-cog-6-tooth" class="w-4 h-4" />
+            <QcommerceWeb.Layouts.sidebar_icon icon="settings" class="w-4 h-4" />
             Settings
           </a>
         <% end %>
@@ -291,26 +291,26 @@ defmodule QcommerceWeb.Admin.DashboardLive do
 
   defp stat_cards(stats, :super_admin) do
     [
-      {:users,    Map.get(stats, :users, 0),           "Total Users",     "hero-user",                ""},
+      {:users,    Map.get(stats, :users, 0),           "Total Users",     "user",                ""},
       {:products, Map.get(stats, :products, 0),        "Products",        "product",                  "#{Map.get(stats, :active_products, 0)} active"},
-      {:branches, Map.get(stats, :branches, 0),        "Branches",        "hero-building-storefront", ""},
-      {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "hero-shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
+      {:branches, Map.get(stats, :branches, 0),        "Branches",        "storefront", ""},
+      {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
       {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "hero-clock",               ""},
     ]
   end
 
   defp stat_cards(stats, :manager) do
     [
-      {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "hero-shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
+      {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
       {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "hero-clock",               ""},
       {:products, Map.get(stats, :products, 0),        "Products",        "product",                  "#{Map.get(stats, :active_products, 0)} active"},
-      {:branches, Map.get(stats, :branches, 0),        "Branches",        "hero-building-storefront", ""},
+      {:branches, Map.get(stats, :branches, 0),        "Branches",        "storefront", ""},
     ]
   end
 
   defp stat_cards(stats, _staff) do
     [
-      {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "hero-shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
+      {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
       {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "hero-clock",               ""},
     ]
   end

@@ -511,12 +511,12 @@
           <div class="adm-nav-group">
             <div class="adm-nav-group-label">Overview</div>
             <a href="/admin" class={"adm-nav-link #{if assigns[:admin_section] == :dashboard, do: "active"}"}>
-              <QcommerceWeb.Layouts.sidebar_icon icon="hero-home" />
+              <QcommerceWeb.Layouts.sidebar_icon icon="dashboard" />
               <span class="lbl">Dashboard</span>
             </a>
             <%= if assigns[:current_user] && assigns[:current_user].role == :super_admin do %>
               <a href="/admin/settings" class={"adm-nav-link #{if assigns[:admin_section] == :settings, do: "active"}"}>
-                <QcommerceWeb.Layouts.sidebar_icon icon="hero-cog-6-tooth" />
+                <QcommerceWeb.Layouts.sidebar_icon icon="settings" />
                 <span class="lbl">Settings</span>
               </a>
             <% end %>
