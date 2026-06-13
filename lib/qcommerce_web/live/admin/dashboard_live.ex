@@ -295,14 +295,14 @@ defmodule QcommerceWeb.Admin.DashboardLive do
       {:products, Map.get(stats, :products, 0),        "Products",        "product",                  "#{Map.get(stats, :active_products, 0)} active"},
       {:branches, Map.get(stats, :branches, 0),        "Branches",        "storefront", ""},
       {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
-      {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "hero-clock",               ""},
+      {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "clock",               ""},
     ]
   end
 
   defp stat_cards(stats, :manager) do
     [
       {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
-      {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "hero-clock",               ""},
+      {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "clock",               ""},
       {:products, Map.get(stats, :products, 0),        "Products",        "product",                  "#{Map.get(stats, :active_products, 0)} active"},
       {:branches, Map.get(stats, :branches, 0),        "Branches",        "storefront", ""},
     ]
@@ -311,7 +311,7 @@ defmodule QcommerceWeb.Admin.DashboardLive do
   defp stat_cards(stats, _staff) do
     [
       {:orders,   Map.get(stats, :orders, 0),          "Total Orders",    "shopping-cart",       "#{Map.get(stats, :today_orders, 0)} today"},
-      {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "hero-clock",               ""},
+      {:pending,  Map.get(stats, :pending_orders, 0),  "Pending Orders",  "clock",               ""},
     ]
   end
 end

@@ -25,8 +25,9 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import AdminChart from "./hooks/admin_chart";
 import Hooks from "./hooks/hooks";
+import Clock from "./hooks/clock";
 
-const hooks = { AdminChart, ...Hooks };
+const hooks = { AdminChart, Clock, ...Hooks };
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
