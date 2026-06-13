@@ -25,8 +25,7 @@ config :qcommerce, QcommerceWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "ObYLtl44alkzxbS+KNWiIMwpOBEaVGw63IJWnzrSMhFmyHI4mGiP262xoGd7YInd",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:qcommerce, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:qcommerce, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:qcommerce, ~w(--sourcemap=inline --watch)]}
   ],
   live_reload: [
     patterns: [

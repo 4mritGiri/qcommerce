@@ -7,7 +7,7 @@ defmodule QcommerceWeb.HomeLive do
   alias Qcommerce.Settings
   alias Qcommerce.Cart.CartSession
 
-  alias QcommerceWeb.Live.Components.{
+  alias QcommerceWeb.Components.{
     CartPanel,
     CatalogComponents,
     NavComponents,

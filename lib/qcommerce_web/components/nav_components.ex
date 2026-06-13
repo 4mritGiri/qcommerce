@@ -1,4 +1,5 @@
-defmodule QcommerceWeb.Live.Components.NavComponents do
+# lib/qcommerce_web/components/nav_components.ex
+defmodule QcommerceWeb.Components.NavComponents do
   use QcommerceWeb, :html
 
   # ---------------------------------------------------------------------------

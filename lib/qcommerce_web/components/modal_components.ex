@@ -1,4 +1,5 @@
-defmodule QcommerceWeb.Live.Components.ModalComponents do
+# lib/qcommerce_web/components/modal_components.ex
+defmodule QcommerceWeb.Components.ModalComponents do
   use QcommerceWeb, :html
 
   # ---------------------------------------------------------------------------

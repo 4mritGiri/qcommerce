@@ -1,5 +1,5 @@
-# lib/qcommerce_web/live/components/catalog_components.ex
-defmodule QcommerceWeb.Live.Components.CatalogComponents do
+# lib/qcommerce_web/components/catalog_components.ex
+defmodule QcommerceWeb.Components.CatalogComponents do
   use QcommerceWeb, :html
   import Phoenix.HTML, only: [raw: 1]
 

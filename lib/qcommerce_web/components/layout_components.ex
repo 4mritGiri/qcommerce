@@ -1,4 +1,5 @@
-defmodule QcommerceWeb.Live.Components.LayoutComponents do
+# lib/qcommerce_web/components/layout_components.ex
+defmodule QcommerceWeb.Components.LayoutComponents do
   use QcommerceWeb, :html
 
   # ---------------------------------------------------------------------------

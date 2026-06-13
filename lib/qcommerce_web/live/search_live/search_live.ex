@@ -7,8 +7,8 @@ defmodule QcommerceWeb.SearchLive do
 
   alias Qcommerce.Catalog
   alias Qcommerce.Cart.CartSession
-  # alias QcommerceWeb.Live.Components.{NavComponents, LayoutComponents, CartPanel}
-  # alias QcommerceWeb.Live.Components.CatalogComponents
+  alias QcommerceWeb.Components.{NavComponents, LayoutComponents, CartPanel}
+  alias QcommerceWeb.Components.CatalogComponents
 
   @per_page 24
 

@@ -1,5 +1,5 @@
-# lib/qcommerce_web/live/components/cart_panel.ex
-defmodule QcommerceWeb.Live.Components.CartPanel do
+# lib/qcommerce_web/components/cart_panel.ex
+defmodule QcommerceWeb.Components.CartPanel do
   use QcommerceWeb, :html
 
   # ---------------------------------------------------------------------------

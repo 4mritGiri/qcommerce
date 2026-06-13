@@ -46,7 +46,6 @@ defmodule Qcommerce.MixProject do
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.9", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.4", runtime: Mix.env() == :dev},
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.1.1",
@@ -124,10 +123,9 @@ defmodule Qcommerce.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind qcommerce", "esbuild qcommerce"],
+      "assets.setup": ["esbuild.install --if-missing"],
+      "assets.build": ["esbuild qcommerce"],
       "assets.deploy": [
-        "tailwind qcommerce --minify",
         "esbuild qcommerce --minify",
         "phx.digest"
       ],
