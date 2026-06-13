@@ -387,7 +387,8 @@ defmodule QcommerceWeb.HomeLive do
       )
 
     {count, total} = CartSession.cart_totals(items)
-    {:noreply, assign(socket, cart_items: items, cart_count: count, cart_total: total)}
+    socket = assign(socket, cart_items: items, cart_count: count, cart_total: total)
+    {:noreply, push_cart_save(socket)}
   end
 
   def handle_event("decrement_cart", %{"product_id" => pid}, socket) do
@@ -399,17 +400,47 @@ defmodule QcommerceWeb.HomeLive do
       end
 
     {count, total} = CartSession.cart_totals(items)
-    {:noreply, assign(socket, cart_items: items, cart_count: count, cart_total: total)}
+    socket = assign(socket, cart_items: items, cart_count: count, cart_total: total)
+    {:noreply, push_cart_save(socket)}
   end
 
   def handle_event("remove_cart_item", %{"product_id" => pid}, socket) do
     items = Map.delete(socket.assigns.cart_items, pid)
     {count, total} = CartSession.cart_totals(items)
-    {:noreply, assign(socket, cart_items: items, cart_count: count, cart_total: total)}
+    socket = assign(socket, cart_items: items, cart_count: count, cart_total: total)
+    {:noreply, push_cart_save(socket)}
   end
 
   def handle_event("clear_cart", _, socket) do
-    {:noreply, assign(socket, cart_items: %{}, cart_count: 0, cart_total: Decimal.new("0"))}
+    socket = assign(socket, cart_items: %{}, cart_count: 0, cart_total: Decimal.new("0"))
+    {:noreply, push_cart_save(socket)}
+  end
+
+  # ---------------------------------------------------------------------------
+  # Cart persistence — restore from localStorage on reconnect
+  # ---------------------------------------------------------------------------
+
+  def handle_event("restore_cart", %{"cart" => cart_json}, socket) do
+    # Only restore if the in-memory cart is still empty (don't clobber a live cart)
+    if map_size(socket.assigns.cart_items) == 0 do
+      cart = CartSession.decode_cart(cart_json)
+      {count, total} = CartSession.cart_totals(cart)
+      {:noreply, assign(socket, cart_items: cart, cart_count: count, cart_total: total)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Checkout — serialize cart to Plug session then navigate
+  # ---------------------------------------------------------------------------
+
+  def handle_event("proceed_checkout", _, socket) do
+    cart_json = CartSession.encode_cart(socket.assigns.cart_items)
+    # Reuse the same GuestCartBridge hook that login uses; it POSTs to
+    # /session/save_guest_cart which stores the cart in Plug.Session and
+    # then redirects to /checkout.
+    {:noreply, push_event(socket, "save_guest_cart", %{cart: cart_json, redirect: "/checkout"})}
   end
 
   # ---------------------------------------------------------------------------
@@ -732,17 +763,6 @@ defmodule QcommerceWeb.HomeLive do
     end
   end
 
-  defp db_product_to_chip(p) do
-    %{
-      id: p.id,
-      emoji: p.emoji,
-      name: p.name,
-      badge: if(Product.discount_pct(p), do: "SALE"),
-      time: "10 mins",
-      price: Product.format_price(p.base_price),
-      price_raw: p.base_price
-    }
-  end
 
   defp badge_class(nil), do: nil
   defp badge_class(_), do: "badge-sale"
@@ -773,5 +793,10 @@ defmodule QcommerceWeb.HomeLive do
 
   defp countdown_label(nil), do: nil
   defp countdown_label(fs), do: FlashSale.format_countdown(FlashSale.seconds_remaining(fs))
+
+  defp push_cart_save(socket) do
+    cart_json = CartSession.encode_cart(socket.assigns.cart_items)
+    push_event(socket, "cart_saved", %{cart: cart_json})
+  end
 end
 

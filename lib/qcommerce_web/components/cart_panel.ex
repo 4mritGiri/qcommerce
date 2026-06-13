@@ -457,7 +457,7 @@ defmodule QcommerceWeb.Components.CartPanel do
       <div style="padding:14px 16px;border-top:1px solid #e5e7eb">
         <%= if @current_user do %>
           <button
-            phx-click="close_cart"
+            phx-click="proceed_checkout"
             style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"
           >
             <span>Proceed to checkout →</span>

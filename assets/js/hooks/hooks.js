@@ -68,6 +68,34 @@ Hooks.GuestCartBridge = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CartStore
+// Persists the cart to localStorage so it survives page reloads and
+// browser restarts.
+//
+// Server pushes: push_event("cart_saved", %{cart: json_or_nil})
+// Client pushes: pushEvent("restore_cart", {cart: json})
+// ─────────────────────────────────────────────────────────────────────────────
+Hooks.CartStore = {
+  CART_KEY: "qc_cart_v1",
+  mounted() {
+    // 1. On mount, restore saved cart to server (only when socket is connected)
+    const saved = localStorage.getItem(this.CART_KEY)
+    if (saved) {
+      this.pushEvent("restore_cart", { cart: saved })
+    }
+
+    // 2. Whenever the server mutates the cart, save to localStorage
+    this.handleEvent("cart_saved", ({ cart }) => {
+      if (cart) {
+        localStorage.setItem(this.CART_KEY, cart)
+      } else {
+        localStorage.removeItem(this.CART_KEY)
+      }
+    })
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PasskeyHook
 // Handles the full WebAuthn navigator.credentials.create() / .get() flow.
 //

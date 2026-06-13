@@ -58,6 +58,7 @@ defmodule QcommerceWeb.Router do
     # get "/", PageController, :home
     live "/", HomeLive, :index
     live "/search", HomeLive, :search
+    live "/checkout", CheckoutLive, :index
 
     live "/cart/share/:token", CartShareLive, :index
 

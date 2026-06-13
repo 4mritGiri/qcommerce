@@ -1,0 +1,852 @@
+<%!-- lib/qcommerce_web/live/checkout_live/checkout_live.html.heex --%>
+
+<style>
+  .co-page {
+    min-height: 100vh;
+    background: #f8fafc;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
+  }
+  .co-topbar {
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.02);
+  }
+  .co-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .co-topbar-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #f1f5f9;
+    border-radius: 50%;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .co-topbar-back:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: translateX(-2px);
+  }
+  .co-topbar-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .co-topbar-logo {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #10b981, #059669);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .co-topbar-badge {
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+  }
+  .co-topbar-secure {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #059669;
+    background: #ecfdf5;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #a7f3d0;
+  }
+
+  .co-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+  .co-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 28px;
+  }
+  @media (max-width: 900px) {
+    .co-topbar { padding: 14px 20px; }
+    .co-container { padding: 20px 16px 60px; }
+    .co-grid { grid-template-columns: 1fr; gap: 20px; }
+  }
+
+  .co-card {
+    background: #fff;
+    border-radius: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01);
+    margin-bottom: 24px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .co-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+  }
+
+  .co-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .co-section-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #10b981;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 50%;
+  }
+  .co-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .addr-option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    background: #fff;
+  }
+  .addr-option:hover {
+    border-color: #a7f3d0;
+    background: #fcfdfd;
+  }
+  .addr-option.selected {
+    border-color: #10b981;
+    background: #f0fdf4;
+    box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.06);
+  }
+  .addr-radio {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .addr-option.selected .addr-radio {
+    border-color: #10b981;
+    background: #10b981;
+  }
+  .addr-radio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .addr-icon {
+    width: 44px;
+    height: 44px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .addr-option.selected .addr-icon {
+    background: #dcfce7;
+  }
+
+  .addr-details {
+    flex: 1;
+  }
+  .addr-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .addr-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #0f766e;
+    background: #ccfbf1;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  .addr-line {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+  .addr-city {
+    font-size: 13px;
+    color: #64748b;
+  }
+
+  .co-add-addr {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    background: #fff;
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .co-add-addr:hover {
+    border-color: #10b981;
+    color: #059669;
+    background: #f0fdf4;
+  }
+
+  /* Form Styling */
+  .addr-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+  }
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #0f172a;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    background: #fff;
+  }
+  .form-input:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  }
+  .field-error {
+    font-size: 12px;
+    font-weight: 500;
+    color: #ef4444;
+    margin-top: 4px;
+  }
+  .label-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .label-chip {
+    padding: 8px 18px;
+    border-radius: 9999px;
+    border: 1.5px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .label-chip:hover {
+    border-color: #10b981;
+    color: #10b981;
+  }
+  .label-chip.active {
+    border-color: #10b981;
+    background: #dcfce7;
+    color: #047857;
+  }
+
+  /* Order Summary items */
+  .order-items-list {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    padding-right: 4px;
+  }
+  .order-items-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  .order-items-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+  .order-items-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  .order-items-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .order-item:last-child {
+    border-bottom: none;
+  }
+  .order-item-icon {
+    width: 40px;
+    height: 40px;
+    background: #f0fdf4;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .order-item-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .order-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .order-item-price-qty {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 1px;
+  }
+  .order-item-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .delivery-tag {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    color: #065f46;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .bill-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .bill-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .bill-row-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    padding-top: 14px;
+    border-top: 1px dashed #cbd5e1;
+    margin-top: 8px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 16px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px 0 rgba(16,185,129,0.3);
+    transition: all 0.2s ease;
+    margin-top: 16px;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px 0 rgba(16,185,129,0.4);
+    transform: translateY(-1px);
+    opacity: 0.95;
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+  .btn-primary:disabled {
+    background: #94a3b8;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+  }
+
+  /* Success Screen styling */
+  .success-card {
+    max-width: 480px;
+    margin: 60px auto;
+    text-align: center;
+    padding: 40px 32px;
+  }
+  .success-badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #059669;
+    font-size: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 0 0 8px #f0fdf4;
+  }
+  .success-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 8px;
+  }
+  .success-desc {
+    font-size: 14px;
+    color: #475569;
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+  .success-meta-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+  }
+  .success-meta-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .success-meta-row:last-child {
+    border-bottom: none;
+  }
+  .success-meta-row.total {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 15px;
+  }
+  .btn-continue {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 32px;
+    background: #10b981;
+    color: #fff;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 12px 0 rgba(16,185,129,0.2);
+    transition: all 0.2s ease;
+  }
+  .btn-continue:hover {
+    box-shadow: 0 6px 18px 0 rgba(16,185,129,0.3);
+    opacity: 0.95;
+  }
+
+  /* Error banner */
+  .co-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fee2e2;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+</style>
+
+<div class="co-page">
+
+  <%!-- ── TOP BAR ── --%>
+  <div class="co-topbar">
+    <div class="co-topbar-left">
+      <.link navigate="/" class="co-topbar-back">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 18px; height: 18px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </.link>
+      <div class="co-topbar-logo-container">
+        <span class="co-topbar-logo">QCommerce</span>
+        <span class="co-topbar-badge">Checkout</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <%= if @step != :placed do %>
+        <span class="co-topbar-badge" style="background:#f1f5f9; color:#475569;">
+          {@cart_count} item<%= if @cart_count != 1, do: "s" %>
+        </span>
+      <% end %>
+      <span class="co-topbar-secure">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 15px; height: 15px;">
+          <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 00-10 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+        </svg>
+        Secure checkout
+      </span>
+    </div>
+  </div>
+
+  <div class="co-container">
+    <%= if @step == :placed do %>
+      <%!-- ── SUCCESS SCREEN ── --%>
+      <div class="co-card success-card">
+        <div class="success-badge">✓</div>
+        <h1 class="success-title">Order Placed! 🎉</h1>
+        <p class="success-desc">
+          Your order has been placed successfully. Our branch will dispatch it shortly.
+        </p>
+
+        <div class="success-meta-card">
+          <div class="success-meta-row">
+            <span>Order ID</span>
+            <strong style="color: #0f172a;">#{String.slice(to_string(@order_result && @order_result.id || "order"), 0..7)}</strong>
+          </div>
+          <div class="success-meta-row">
+            <span>Estimated delivery</span>
+            <strong style="color: #059669;">10 minutes</strong>
+          </div>
+          <div class="success-meta-row">
+            <span>Branch</span>
+            <span>{@branch && @branch.name || "Default Branch"}</span>
+          </div>
+          <div class="success-meta-row total">
+            <span>Amount paid</span>
+            <span>Rs. <%= grand_total(@cart_total) %></span>
+          </div>
+        </div>
+
+        <.link navigate="/" class="btn-continue">
+          Continue Shopping
+        </.link>
+      </div>
+
+    <% else %>
+      <%!-- ── MAIN CHECKOUT LAYOUT ── --%>
+      <div class="co-grid">
+
+        <%!-- ── LEFT COLUMN ── --%>
+        <div>
+          <%!-- Address section --%>
+          <%= if @step == :review do %>
+            <div class="co-card">
+              <div class="co-section-header">
+                <span class="co-section-num">1</span>
+                <span class="co-section-title">Delivery Address</span>
+              </div>
+
+              <%= if @error do %>
+                <div class="co-error">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 18px; height: 18px; flex-shrink:0;">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                  </svg>
+                  <span>{@error}</span>
+                </div>
+              <% end %>
+
+              <%= if @addresses == [] do %>
+                <div style="text-align: center; padding: 24px 0; border: 1.5px dashed #cbd5e1; border-radius: 16px; margin-bottom: 16px; background: #fafafb;">
+                  <span style="font-size: 28px; display: block; margin-bottom: 8px;">📍</span>
+                  <p style="font-size:13px;color:#64748b;margin:0 0 12px;font-weight:500;">
+                    No saved addresses yet.
+                  </p>
+                </div>
+              <% end %>
+
+              <%= for addr <- @addresses do %>
+                <div
+                  class={"addr-option #{if addr.id == @selected_address_id, do: "selected"}"}
+                  phx-click="select_address"
+                  phx-value-id={addr.id}
+                >
+                  <div class="addr-radio">
+                    <%= if addr.id == @selected_address_id do %>
+                      <div class="addr-radio-dot"></div>
+                    <% end %>
+                  </div>
+                  <div class="addr-icon">
+                    <%= case String.downcase(addr.label || "") do %>
+                      <% "home" -> %>🏠
+                      <% "work" -> %>💼
+                      <% _ -> %>📍
+                    <% end %>
+                  </div>
+                  <div class="addr-details">
+                    <div class="addr-header">
+                      <span class="addr-label">{addr.label}</span>
+                    </div>
+                    <div class="addr-line">{addr.line1}<%= if addr.line2 && addr.line2 != "", do: ", #{addr.line2}" %></div>
+                    <div class="addr-city">{addr.city}</div>
+                  </div>
+                </div>
+              <% end %>
+
+              <button class="co-add-addr" phx-click="show_add_address" style="margin-top: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 16px; height: 16px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add new address
+              </button>
+            </div>
+
+            <%!-- Payment method --%>
+            <div class="co-card payment-card">
+              <div class="co-section-header">
+                <span class="co-section-num">2</span>
+                <span class="co-section-title">Payment Method</span>
+              </div>
+              <div class="addr-option selected" style="cursor:default; margin-bottom:0;">
+                <div class="addr-radio">
+                  <div class="addr-radio-dot"></div>
+                </div>
+                <div class="addr-icon" style="background: #fef3c7;">💵</div>
+                <div class="addr-details">
+                  <div class="addr-line" style="color:#b45309;">Cash on Delivery</div>
+                  <div class="addr-city">Pay when your order arrives</div>
+                </div>
+              </div>
+            </div>
+
+          <% else %>
+            <%!-- ── ADD ADDRESS FORM ── --%>
+            <div class="co-card">
+              <div class="co-section-header">
+                <span class="co-section-num">＋</span>
+                <span class="co-section-title">Add New Address</span>
+              </div>
+
+              <div class="addr-form">
+                <div class="form-group">
+                  <label class="form-label">Address Type</label>
+                  <div class="label-row">
+                    <%= for chip <- ["Home", "Work", "Other"] do %>
+                      <button
+                        type="button"
+                        class={"label-chip #{if @new_label == chip, do: "active"}"}
+                        phx-click="update_new_label"
+                        phx-value-value={chip}
+                      >
+                        {chip}
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Street / Area *</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    placeholder="e.g. Thamel Marg, Ward 26"
+                    value={@new_line1}
+                    phx-blur="update_new_line1"
+                    phx-value-value={@new_line1}
+                    phx-change="update_new_line1"
+                    name="line1"
+                  />
+                  <%= if @form_errors[:line1] do %>
+                    <div class="field-error">{@form_errors[:line1]}</div>
+                  <% end %>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Apartment / Floor (optional)</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    placeholder="e.g. Flat 3B, 2nd Floor"
+                    value={@new_line2}
+                    phx-change="update_new_line2"
+                    phx-value-value={@new_line2}
+                    name="line2"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">City *</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    placeholder="e.g. Kathmandu"
+                    value={@new_city}
+                    phx-change="update_new_city"
+                    phx-value-value={@new_city}
+                    name="city"
+                  />
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:8px">
+                  <button
+                    class="btn-primary"
+                    phx-click="save_address"
+                    style="margin-top:0;flex:1.2; padding: 14px;"
+                  >
+                    Save Address
+                  </button>
+                  <button
+                    phx-click="cancel_add_address"
+                    style="flex:1;padding:14px;border:1.5px solid #cbd5e1;border-radius:16px;font-size:14px;font-weight:700;cursor:pointer;background:#fff;color:#475569;transition:all 0.2s ease;"
+                    onmouseover="this.style.background='#f8fafc'"
+                    onmouseout="this.style.background='#fff'"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <%!-- ── RIGHT COLUMN — ORDER SUMMARY ── --%>
+        <div>
+          <div class="co-card" style="position:sticky;top:90px;">
+            <div class="co-section-title" style="margin-bottom:16px; font-size:15px; display:flex; align-items:center; gap:8px;">
+              <span>🛒</span> Order Summary
+            </div>
+
+            <%!-- Items --%>
+            <div class="order-items-list">
+              <%= for {_pid, item} <- @cart_items do %>
+                <div class="order-item">
+                  <div class="order-item-icon">{item.emoji}</div>
+                  <div class="order-item-info">
+                    <div class="order-item-name">{item.name}</div>
+                    <div class="order-item-price-qty">
+                      Rs. {Decimal.to_string(item.price)} × {item.qty}
+                    </div>
+                  </div>
+                  <div class="order-item-total">
+                    Rs. {Decimal.to_string(Decimal.round(Decimal.mult(item.price, Decimal.new(item.qty)), 0))}
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <%!-- Delivery strip --%>
+            <div class="delivery-tag">
+              <span style="font-size: 16px;">⚡</span>
+              <div>
+                <strong>10 min delivery</strong>
+                <span style="opacity: 0.85; font-size: 12px; display: block; margin-top: 1px;">to Thamel, Kathmandu</span>
+              </div>
+            </div>
+
+            <%!-- Bill --%>
+            <div class="bill-details">
+              <div class="bill-row">
+                <span>Subtotal ({@cart_count} items)</span>
+                <span>Rs. {Decimal.to_string(Decimal.round(@cart_total, 0))}</span>
+              </div>
+              <div class="bill-row">
+                <span>Delivery fee</span>
+                <span style="color:#059669;font-weight:700;">FREE</span>
+              </div>
+              <div class="bill-row">
+                <span>Handling fee</span>
+                <span>Rs. 2</span>
+              </div>
+              <div class="bill-row-total">
+                <span>Grand Total</span>
+                <span style="color:#059669">Rs. <%= grand_total(@cart_total) %></span>
+              </div>
+            </div>
+
+            <%!-- CTA --%>
+            <%= if @step == :review do %>
+              <button
+                class="btn-primary"
+                phx-click="place_order"
+                disabled={@placing or is_nil(@selected_address_id)}
+              >
+                <span><%= if @placing, do: "Placing order…", else: "Place Order" %></span>
+                <span style="margin-left: 8px;">Rs. <%= grand_total(@cart_total) %> →</span>
+              </button>
+            <% end %>
+
+            <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:14px; display:flex; align-items:center; justify-content:center; gap:4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 12px; height: 12px; opacity:0.7;">
+                <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 00-10 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+              </svg>
+              Secure checkout · No hidden fees
+            </p>
+          </div>
+        </div>
+
+      </div>
+    <% end %>
+  </div>
+</div>
