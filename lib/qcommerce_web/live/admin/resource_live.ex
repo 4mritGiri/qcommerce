@@ -1449,15 +1449,6 @@ defmodule QcommerceWeb.Admin.ResourceLive do
               </button>
             </form>
           </div>
-        <% else %>
-          <!-- Always show CSV export if configured -->
-          <%= for _action <- Enum.filter(@config.custom_actions || [], &(&1.id == "export_csv")) do %>
-            <button phx-click="bulk_action" phx-value-action="export_csv"
-              class="adm-btn adm-btn-ghost" style="font-size:11px;">
-              <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-down-tray" class="w-4 h-4" />
-              Export
-            </button>
-          <% end %>
         <% end %>
 
         <span style="font-size:11px;color:var(--adm-text2);">
