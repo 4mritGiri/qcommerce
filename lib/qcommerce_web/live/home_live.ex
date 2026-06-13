@@ -149,6 +149,35 @@ defmodule QcommerceWeb.HomeLive do
   def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   # ---------------------------------------------------------------------------
+  # Tick
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_info(:tick, socket) do
+    countdown = countdown_label(socket.assigns.flash_sale)
+
+    qr_count =
+      if socket.assigns.show_login_modal and socket.assigns.login_tab == :qr do
+        if socket.assigns.qr_countdown <= 1, do: 60, else: socket.assigns.qr_countdown - 1
+      else
+        socket.assigns.qr_countdown
+      end
+
+    share_left =
+      if socket.assigns.show_share_panel and socket.assigns.share_seconds_left > 0 do
+        socket.assigns.share_seconds_left - 1
+      else
+        socket.assigns.share_seconds_left
+      end
+
+    {:noreply,
+     socket
+     |> assign(:flash_countdown, countdown)
+     |> assign(:qr_countdown, qr_count)
+     |> assign(:share_seconds_left, share_left)}
+  end
+
+  # ---------------------------------------------------------------------------
   # Shared-cart modal events
   # ---------------------------------------------------------------------------
 
@@ -178,34 +207,6 @@ defmodule QcommerceWeb.HomeLive do
      |> assign(:shared_cart_items, %{})}
   end
 
-  # ---------------------------------------------------------------------------
-  # Tick
-  # ---------------------------------------------------------------------------
-
-  @impl true
-  def handle_info(:tick, socket) do
-    countdown = countdown_label(socket.assigns.flash_sale)
-
-    qr_count =
-      if socket.assigns.show_login_modal and socket.assigns.login_tab == :qr do
-        if socket.assigns.qr_countdown <= 1, do: 60, else: socket.assigns.qr_countdown - 1
-      else
-        socket.assigns.qr_countdown
-      end
-
-    share_left =
-      if socket.assigns.show_share_panel and socket.assigns.share_seconds_left > 0 do
-        socket.assigns.share_seconds_left - 1
-      else
-        socket.assigns.share_seconds_left
-      end
-
-    {:noreply,
-     socket
-     |> assign(:flash_countdown, countdown)
-     |> assign(:qr_countdown, qr_count)
-     |> assign(:share_seconds_left, share_left)}
-  end
 
   # ---------------------------------------------------------------------------
   # Location events
