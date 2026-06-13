@@ -55,7 +55,15 @@ defmodule QcommerceWeb.Admin.ResourceLive do
              |> assign(:config, config)
              |> assign(:resource_slug, Registry.schema_to_slug(config.schema))
              |> assign(:admin_resource, config.schema)
-             |> assign(:delete_confirm_id, nil)}
+             |> assign(:delete_confirm_id, nil)
+             |> assign(:show_import_modal, false)
+             |> assign(:show_export_modal, false)
+             |> assign(:import_mode, "upsert")
+             |> assign(:import_unique_keys, [])
+             |> assign(:import_errors, [])
+             |> assign(:import_result, nil)
+             |> assign(:export_selected_fields, [])
+             |> allow_upload(:import_file, accept: ~w(.csv), max_entries: 1)}
         end
     end
   end
@@ -719,6 +727,133 @@ defmodule QcommerceWeb.Admin.ResourceLive do
         {:noreply, assign(socket, :changeset_errors, errors)}
     end
   end
+  # ---------------------------------------------------------------------------
+  # Import / Export Actions
+  # ---------------------------------------------------------------------------
+
+  def handle_event("open_import_modal", _params, socket) do
+    schema = socket.assigns.config.schema
+    default_keys =
+      Enum.filter([:code, :sku, :email, :name], fn f -> f in schema.__schema__(:fields) end)
+      |> Enum.map(&to_string/1)
+
+    {:noreply,
+     socket
+     |> assign(:show_import_modal, true)
+     |> assign(:import_errors, [])
+     |> assign(:import_result, nil)
+     |> assign(:import_mode, "upsert")
+     |> assign(:import_unique_keys, default_keys)}
+  end
+
+  def handle_event("close_import_modal", _params, socket) do
+    {:noreply, assign(socket, :show_import_modal, false)}
+  end
+
+  def handle_event("open_export_modal", _params, socket) do
+    schema = socket.assigns.config.schema
+    exclude = [:id, :inserted_at, :updated_at, :password_hash]
+    all_fields =
+      schema.__schema__(:fields)
+      |> Enum.reject(&(&1 in exclude))
+      |> Enum.map(&to_string/1)
+
+    {:noreply,
+     socket
+     |> assign(:show_export_modal, true)
+     |> assign(:export_selected_fields, all_fields)}
+  end
+
+  def handle_event("close_export_modal", _params, socket) do
+    {:noreply, assign(socket, :show_export_modal, false)}
+  end
+
+  def handle_event("import_change", params, socket) do
+    import_mode = params["import_mode"] || "upsert"
+    unique_keys = Map.keys(params["unique_keys"] || %{})
+    {:noreply,
+     socket
+     |> assign(:import_mode, import_mode)
+     |> assign(:import_unique_keys, unique_keys)}
+  end
+
+  def handle_event("import_submit", _params, socket) do
+    import_mode = socket.assigns.import_mode
+    unique_keys = socket.assigns.import_unique_keys
+    schema = socket.assigns.config.schema
+
+    uploaded_files =
+      consume_uploaded_entries(socket, :import_file, fn %{path: path}, _entry ->
+        case File.read(path) do
+          {:ok, content} -> {:ok, content}
+          error -> error
+        end
+      end)
+
+    case uploaded_files do
+      [csv_content] ->
+        case Qcommerce.Admin.ImportExport.import_csv(schema, csv_content, import_mode, unique_keys) do
+          {:ok, result} ->
+            # Reload list to reflect new data
+            updated_socket =
+              socket
+              |> assign(:import_result, result)
+              |> assign(:import_errors, result.errors)
+              |> load_list(socket.assigns.config, %{})
+
+            {:noreply, put_flash(updated_socket, :info, "Import process completed successfully.")}
+
+          {:error, msg} ->
+            {:noreply,
+             socket
+             |> assign(:import_errors, [msg])
+             |> assign(:import_result, nil)}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Please select a valid CSV file to upload.")}
+    end
+  end
+
+  def handle_event("export_submit", %{"fields" => fields_map}, socket) do
+    selected_fields = Map.keys(fields_map)
+    config = socket.assigns.config
+    schema = config.schema
+
+    # Build the full filtered query (without pagination limit/offset)
+    query =
+      from(r in schema)
+      |> maybe_search(config, socket.assigns.search)
+      |> maybe_filter(schema, socket.assigns.filters)
+      |> maybe_date_drill(config, socket.assigns.date_drill)
+
+    records = Repo.all(query)
+
+    # Build Ecto field metadata list for selected fields
+    fields_meta =
+      Enum.map(selected_fields, fn f_str ->
+        f_atom = String.to_existing_atom(f_str)
+        %{name: f_atom, label: FieldHelper.humanize(f_atom)}
+      end)
+
+    csv_content = build_csv(records, fields_meta)
+    filename = "#{config.label |> String.downcase() |> String.replace(" ", "_")}_export.csv"
+
+    {:noreply,
+     socket
+     |> assign(:show_export_modal, false)
+     |> push_event("download_csv", %{content: csv_content, filename: filename})
+     |> put_flash(:info, "CSV export of selected fields triggered.")}
+  end
+
+  def handle_event("download_sample_csv", _params, socket) do
+    schema = socket.assigns.config.schema
+    csv_content = Qcommerce.Admin.ImportExport.sample_csv(schema)
+    filename = "#{socket.assigns.config.label |> String.downcase() |> String.replace(" ", "_")}_sample.csv"
+    {:noreply,
+     socket
+     |> push_event("download_csv", %{content: csv_content, filename: filename})}
+  end
 
   # ---------------------------------------------------------------------------
   # Inline save helper
@@ -773,13 +908,23 @@ defmodule QcommerceWeb.Admin.ResourceLive do
     rows =
       Enum.map(records, fn record ->
         Enum.map(fields, fn field ->
-          val = Map.get(record, field.name) |> FieldHelper.format_value() |> to_string()
-          "\"#{String.replace(val, "\"", "\"\"")}\""
+          raw_val = Map.get(record, field.name)
+          val_str = format_csv_value(raw_val)
+          "\"#{String.replace(val_str, "\"", "\"\"")}\""
         end)
         |> Enum.join(",")
       end)
     Enum.join([header | rows], "\n")
   end
+
+  defp format_csv_value(nil), do: ""
+  defp format_csv_value(true), do: "true"
+  defp format_csv_value(false), do: "false"
+  defp format_csv_value(%DateTime{} = dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S")
+  defp format_csv_value(%NaiveDateTime{} = dt), do: NaiveDateTime.to_string(dt)
+  defp format_csv_value(%Decimal{} = d), do: Decimal.to_string(d)
+  defp format_csv_value(v) when is_atom(v), do: Atom.to_string(v)
+  defp format_csv_value(v), do: to_string(v)
 
   # ---------------------------------------------------------------------------
   # URL helpers
@@ -853,6 +998,164 @@ defmodule QcommerceWeb.Admin.ResourceLive do
         </div>
       </div>
     <% end %>
+    <!-- Import CSV Modal -->
+    <%= if @show_import_modal do %>
+      <div style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;">
+        <div style="background:var(--adm-card);border:1px solid var(--adm-border);border-radius:16px;padding:32px;width:550px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h2 style="font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--adm-text);margin:0;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-up-tray" class="w-5 h-5" />
+              Import CSV: <%= @config.label %>
+            </h2>
+            <button type="button" phx-click="close_import_modal" class="adm-btn adm-btn-ghost" style="padding:4px;border:none;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-x-circle" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <form phx-submit="import_submit" phx-change="import_change">
+            <!-- Download Sample -->
+            <div style="background:var(--adm-surface);border:1px solid var(--adm-border);border-radius:10px;padding:16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="font-weight:600;font-size:13px;color:var(--adm-text);">Need a template?</div>
+                <div style="font-size:11.5px;color:var(--adm-text2);">Download a sample CSV structure for this schema.</div>
+              </div>
+              <button type="button" phx-click="download_sample_csv" class="adm-btn adm-btn-primary" style="font-size:11px;padding:6px 12px;">
+                Download Sample
+              </button>
+            </div>
+
+            <!-- Mode Selection -->
+            <div style="margin-bottom:20px;">
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px;color:var(--adm-text);">Import Mode</label>
+              <select name="import_mode" class="adm-select" style="width:100%;font-size:13px;">
+                <option value="upsert" selected={@import_mode == "upsert"}>Upsert (Create new or Update existing)</option>
+                <option value="create_only" selected={@import_mode == "create_only"}>Create Only (Skip existing)</option>
+                <option value="update_only" selected={@import_mode == "update_only"}>Update Only (Ignore new)</option>
+              </select>
+            </div>
+
+            <!-- Unique Matching Keys -->
+            <div style="margin-bottom:20px;">
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px;color:var(--adm-text);">
+                Unique Match Keys (for identifying existing records)
+              </label>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(135px, 1fr));gap:10px;background:var(--adm-surface);border:1px solid var(--adm-border);border-radius:10px;padding:12px;max-height:150px;overflow-y:auto;">
+                <%= for field <- @config.schema.__schema__(:fields) |> Enum.reject(&(&1 in [:inserted_at, :updated_at, :password_hash])) do %>
+                  <% field_str = to_string(field) %>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--adm-text2);cursor:pointer;user-select:none;">
+                    <input type="checkbox" name={"unique_keys[#{field_str}]"} checked={field_str in @import_unique_keys} style="cursor:pointer;" />
+                    <%= FieldHelper.humanize(field) %>
+                  </label>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- File Upload -->
+            <div style="margin-bottom:24px;">
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px;color:var(--adm-text);">Select CSV File</label>
+              <div style="border:2px dashed var(--adm-border);border-radius:12px;padding:24px;text-align:center;background:var(--adm-surface);">
+                <.live_file_input upload={@uploads.import_file} style="display:block;margin:0 auto 12px;font-size:13px;" />
+                <p style="font-size:11.5px;color:var(--adm-text3);margin:0;">Max size: 5MB. Format: CSV only.</p>
+              </div>
+            </div>
+
+            <!-- Import Results/Feedback -->
+            <%= if @import_result do %>
+              <div style="margin-bottom:20px;padding:16px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);border-radius:10px;">
+                <div style="font-weight:600;font-size:14px;color:#10b981;margin-bottom:8px;">Import Finished</div>
+                <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;text-align:center;font-size:12px;color:var(--adm-text2);">
+                  <div>
+                    <div style="font-weight:700;font-size:16px;color:var(--adm-text);"><%= @import_result.created %></div>
+                    Created
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:16px;color:var(--adm-text);"><%= @import_result.updated %></div>
+                    Updated
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:16px;color:var(--adm-text);"><%= @import_result.skipped %></div>
+                    Skipped
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:16px;color:var(--adm-red);"><%= @import_result.failed %></div>
+                    Failed
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <%= if @import_errors != [] do %>
+              <div style="margin-bottom:20px;padding:16px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:10px;">
+                <div style="font-weight:600;font-size:14px;color:var(--adm-red);margin-bottom:8px;">Import Errors / Warnings</div>
+                <div style="max-height:120px;overflow-y:auto;font-size:11.5px;color:var(--adm-text2);font-family:monospace;display:flex;flex-direction:column;gap:4px;text-align:left;">
+                  <%= for err <- @import_errors do %>
+                    <div>• <%= err %></div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Submit / Actions -->
+            <div style="display:flex;gap:12px;justify-content:flex-end;border-top:1px solid var(--adm-border);padding-top:20px;">
+              <button type="button" phx-click="close_import_modal" class="adm-btn adm-btn-ghost">Close</button>
+              <button type="submit" class="adm-btn adm-btn-primary" disabled={@uploads.import_file.entries == []}>
+                Start Import
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Export Modal -->
+    <%= if @show_export_modal do %>
+      <div style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;">
+        <div style="background:var(--adm-card);border:1px solid var(--adm-border);border-radius:16px;padding:32px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h2 style="font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--adm-text);margin:0;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-down-tray" class="w-5 h-5" />
+              Export: <%= @config.label %>
+            </h2>
+            <button type="button" phx-click="close_export_modal" class="adm-btn adm-btn-ghost" style="padding:4px;border:none;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-x-circle" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <form phx-submit="export_submit">
+            <!-- Select Fields -->
+            <div style="margin-bottom:24px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label style="font-weight:600;font-size:13px;color:var(--adm-text);">Fields to Export</label>
+                <span style="font-size:11px;color:var(--adm-text3);">Check fields to include in export</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;background:var(--adm-surface);border:1px solid var(--adm-border);border-radius:10px;padding:12px;max-height:250px;overflow-y:auto;">
+                <%= for field <- @config.schema.__schema__(:fields) |> Enum.reject(&(&1 in [:password_hash])) do %>
+                  <% field_str = to_string(field) %>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--adm-text2);cursor:pointer;user-select:none;">
+                    <input type="checkbox" name={"fields[#{field_str}]"} checked={field_str in @export_selected_fields} style="cursor:pointer;" />
+                    <%= FieldHelper.humanize(field) %>
+                  </label>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Format / Info -->
+            <div style="background:var(--adm-surface);border:1px solid var(--adm-border);border-radius:10px;padding:12px;font-size:11.5px;color:var(--adm-text2);margin-bottom:20px;display:flex;align-items:center;gap:8px;">
+              <QcommerceWeb.Layouts.sidebar_icon icon="hero-information-circle" class="w-5 h-5" style="color:var(--adm-accent);" />
+              <span>This will export all matching records across all pages based on current filters and search query.</span>
+            </div>
+
+            <!-- Submit / Actions -->
+            <div style="display:flex;gap:12px;justify-content:flex-end;border-top:1px solid var(--adm-border);padding-top:20px;">
+              <button type="button" phx-click="close_export_modal" class="adm-btn adm-btn-ghost">Cancel</button>
+              <button type="submit" class="adm-btn adm-btn-primary">
+                Export CSV
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    <% end %>
 
     <!-- Page header -->
     <div class="adm-page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -873,11 +1176,21 @@ defmodule QcommerceWeb.Admin.ResourceLive do
           <% end %>
         </p>
       </div>
-      <%= if :edit in (@config.actions || [:show, :edit, :delete]) do %>
-        <a href={"/admin/r/#{@resource_slug}/new"} class="adm-btn adm-btn-primary">
-          + New <%= @config.label_singular %>
-        </a>
-      <% end %>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button phx-click="open_import_modal" class="adm-btn adm-btn-ghost" style="font-size:13px;display:inline-flex;align-items:center;gap:6px;height:36px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-up-tray" class="w-4 h-4" />
+          Import
+        </button>
+        <button phx-click="open_export_modal" class="adm-btn adm-btn-ghost" style="font-size:13px;display:inline-flex;align-items:center;gap:6px;height:36px;">
+          <QcommerceWeb.Layouts.sidebar_icon icon="hero-arrow-down-tray" class="w-4 h-4" />
+          Export
+        </button>
+        <%= if :edit in (@config.actions || [:show, :edit, :delete]) do %>
+          <a href={"/admin/r/#{@resource_slug}/new"} class="adm-btn adm-btn-primary" style="height:36px;display:inline-flex;align-items:center;">
+            + New <%= @config.label_singular %>
+          </a>
+        <% end %>
+      </div>
     </div>
 
     <!-- Date hierarchy breadcrumb -->
@@ -921,6 +1234,7 @@ defmodule QcommerceWeb.Admin.ResourceLive do
               class="adm-search" phx-debounce="300" phx-change="search" />
           </div>
         </form>
+
 
         <!-- Filter dropdowns -->
         <%= for {field_name, opts} <- @filter_options do %>
